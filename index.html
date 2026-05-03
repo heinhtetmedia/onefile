@@ -228,6 +228,35 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 .credit a:hover { text-decoration: underline; color: #1877F2; }
 .credit .sep { color: #bbb; }
 
+#filename-bar {
+  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 100; display: flex; align-items: center; pointer-events: none;
+}
+#filename-display {
+  font-size: 13px; color: #bbb; cursor: pointer; padding: 3px 10px;
+  border-radius: 4px; border: 1px solid transparent; pointer-events: all;
+  white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis;
+  font-family: Calibri, sans-serif; transition: border-color 0.15s, color 0.15s;
+}
+#filename-display:hover { border-color: #ddd; color: #888; }
+#filename-input {
+  font-size: 13px; color: #333; padding: 3px 10px; border-radius: 4px;
+  border: 1px solid #1877F2; outline: none; background: white; pointer-events: all;
+  width: 200px; display: none; font-family: Calibri, sans-serif;
+  box-shadow: 0 0 0 3px rgba(24,119,242,0.15);
+}
+@media (hover: none) {
+  .resize-handle { width: 14px; height: 14px; }
+  .resize-handle.top-left     { top: -7px; left: -7px; }
+  .resize-handle.top-right    { top: -7px; right: -7px; }
+  .resize-handle.bottom-left  { bottom: -7px; left: -7px; }
+  .resize-handle.bottom-right { bottom: -7px; right: -7px; }
+  .resize-handle.top    { top: -7px; }
+  .resize-handle.right  { right: -7px; }
+  .resize-handle.bottom { bottom: -7px; }
+  .resize-handle.left   { left: -7px; }
+}
+
 #selection-box {
   position: absolute; border: 1px dashed #1a1a1a;
   background-color: rgba(66,133,244,0.1);
@@ -269,6 +298,13 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
     </svg>
   </button>
   <div class="sidebar-divider"></div>
+  <button id="undo-btn" class="tooltip" data-tooltip="Undo (Ctrl+Z)">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+  </button>
+  <button id="redo-btn" class="tooltip" data-tooltip="Redo (Ctrl+Y)">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
+  </button>
+  <div class="sidebar-divider"></div>
   <button id="clear-btn" class="tooltip" data-tooltip="Clear Canvas">
     <svg class="icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
   </button>
@@ -282,6 +318,10 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
       <path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H4V7h16v10zM6 10h2v2H6zm3 0h2v2H9zm3 0h2v2h-2zm3 0h2v2h-2zM6 13h12v2H6z"></path>
     </svg>
   </button>
+</div>
+<div id="filename-bar">
+  <span id="filename-display">onefile</span>
+  <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none">
 </div>
 <input type="file" id="file-input" accept="image/*" multiple>
 <div id="zoom-controls">
@@ -326,6 +366,7 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   </ul>
 </div>
 <div class="credit">
+  <svg width="14" height="14" viewBox="0 0 24 24" style="flex-shrink:0"><path fill="#1877F2" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
   <a href="https://github.com/heinhtetmedia/onefile" target="_blank" rel="noopener">Onefile</a>
   <span class="sep">·</span>
   <a href="https://heinhtetmedia.github.io/onefile/" target="_blank" rel="noopener" title="Open the latest version of Onefile">Get latest version</a>
@@ -350,6 +391,7 @@ let selectionStartX, selectionStartY;
 let undoStack = [], redoStack = [];
 let pendingSnapshot = null;
 let dirty = false;
+let currentFilename = 'onefile';
 
 function $(id) { return document.getElementById(id); }
 function generateId() { return 'obj_' + Math.random().toString(36).slice(2, 11); }
@@ -1085,7 +1127,8 @@ function buildStaticBodyHTML(state) {
     $('zoom-controls').outerHTML,
     '<div id="text-dialog" style="display: none;">' + $('text-dialog').innerHTML + '</div>',
     '<div class="keyboard-shortcuts" style="display: none;">' + document.querySelector('.keyboard-shortcuts').innerHTML + '</div>',
-    '<div class="credit">' + document.querySelector('.credit').innerHTML + '</div>'
+    '<div class="credit">' + document.querySelector('.credit').innerHTML + '</div>',
+    '<div id="filename-bar"><span id="filename-display">' + escapeHTML(state.filename || 'onefile') + '</span><input id="filename-input" type="text" value="' + escapeHTML(state.filename || 'onefile') + '" spellcheck="false" style="display:none"></div>'
   ].join('\n');
 }
 
@@ -1096,6 +1139,7 @@ function saveCanvas() {
     panX: panX,
     panY: panY,
     scale: scale,
+    filename: currentFilename,
     objects: captureState().objects
   };
   const FN_NAMES = [
@@ -1112,6 +1156,7 @@ function saveCanvas() {
     'copySelection','cutSelection','reIdRecursive','pasteFromClipboard',
     'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML',
     'setViewOnly','isViewOnly',
+    'applyDragMove','applyResizeMove','setupFilenameBar','setupTouchSupport',
     'setupPlatformTooltips','buildShortcutsPanel',
     'buildStaticBodyHTML','saveCanvas','init','setupEventListeners','onResize','rebuildEmbeddedState'
   ];
@@ -1139,6 +1184,7 @@ function saveCanvas() {
     "let undoStack = [], redoStack = [];",
     "let pendingSnapshot = null;",
     "let dirty = false;",
+    "let currentFilename = " + JSON.stringify(currentFilename) + ";",
     "function $(id) { return document.getElementById(id); }"
   ].join('\n');
   const styleCss = document.querySelector('style').textContent;
@@ -1148,7 +1194,7 @@ function saveCanvas() {
 '<head>\n' +
 '<meta charset="UTF-8">\n' +
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
-'<title>Onefile</title>\n' +
+'<title>' + escapeHTML(currentFilename) + '</title>\n' +
 '<meta name="description" content="One file. A whole whiteboard.">\n' +
 '<!-- Onefile — created by Hein Htet (heinhtet.com.mm) — MIT licensed — github.com/heinhtetmedia/onefile -->\n' +
 '<link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'><path fill=\'%231877F2\' d=\'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z\'/></svg>">\n' +
@@ -1170,7 +1216,7 @@ fnSrc +
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'onefile.html';
+  a.download = currentFilename + '.html';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1194,6 +1240,8 @@ function setupPlatformTooltips() {
   const alt = isMac ? '⌥' : 'Alt+';
   const set = (id, text) => { const el = $(id); if (el) el.setAttribute('data-tooltip', text); };
   set('view-only-btn',     'Editing ON/OFF');
+  set('undo-btn',          'Undo (' + mod + 'Z)');
+  set('redo-btn',          'Redo (' + mod + 'Y)');
   set('add-image-btn',     'Add Image (I)');
   set('add-text-btn',      'Add Text (T or Double-Click)');
   set('group-btn',         'Group (' + mod + 'G)');
@@ -1237,6 +1285,236 @@ function buildShortcutsPanel() {
   ul.innerHTML = items.map(([keys, desc]) => '<li>' + keys + ' – ' + desc + '</li>').join('');
   const note = document.querySelector('.keyboard-shortcuts p');
   if (note) note.remove();
+}
+
+// ============ DRAG / RESIZE HELPERS (shared by mouse + touch) ============
+
+function applyDragMove(clientX, clientY) {
+  const dx = (clientX - dragStartX) / scale;
+  const dy = (clientY - dragStartY) / scale;
+  selectedObjects.forEach(o => {
+    if (o._initialLeft !== undefined) {
+      o.style.left = (o._initialLeft + dx) + 'px';
+      o.style.top  = (o._initialTop  + dy) + 'px';
+    }
+  });
+}
+
+function applyResizeMove(clientX, clientY, shiftKey) {
+  const obj = selectedObjects[selectedObjects.length - 1];
+  if (!obj) return;
+  const isText = obj.classList.contains('text-object');
+  if (isText && (resizeDirection.indexOf('top') !== -1 || resizeDirection.indexOf('bottom') !== -1) &&
+      resizeDirection !== 'left' && resizeDirection !== 'right') return;
+  const dx = (clientX - dragStartX) / scale;
+  const dy = (clientY - dragStartY) / scale;
+  let newW = startWidth, newH = startHeight, newL = startLeft, newT = startTop;
+  const aspect = startWidth / Math.max(startHeight, 1);
+  switch (resizeDirection) {
+    case 'top-left':
+      newW = startWidth - dx; newH = startHeight - dy; newL = startLeft + dx; newT = startTop + dy;
+      if (shiftKey) { if (newW / Math.max(newH,1) > aspect) { newW = newH * aspect; newL = startLeft + (startWidth - newW); } else { newH = newW / aspect; newT = startTop + (startHeight - newH); } }
+      break;
+    case 'top':
+      newH = startHeight - dy; newT = startTop + dy;
+      if (shiftKey) { newW = newH * aspect; newL = startLeft + (startWidth - newW) / 2; }
+      break;
+    case 'top-right':
+      newW = startWidth + dx; newH = startHeight - dy; newT = startTop + dy;
+      if (shiftKey) { if (newW / Math.max(newH,1) > aspect) newW = newH * aspect; else { newH = newW / aspect; newT = startTop + (startHeight - newH); } }
+      break;
+    case 'right':
+      newW = startWidth + dx;
+      if (shiftKey) newH = newW / aspect;
+      break;
+    case 'bottom-right':
+      newW = startWidth + dx; newH = startHeight + dy;
+      if (shiftKey) { if (newW / Math.max(newH,1) > aspect) newW = newH * aspect; else newH = newW / aspect; }
+      break;
+    case 'bottom':
+      newH = startHeight + dy;
+      if (shiftKey) { newW = newH * aspect; newL = startLeft + (startWidth - newW) / 2; }
+      break;
+    case 'bottom-left':
+      newW = startWidth - dx; newH = startHeight + dy; newL = startLeft + dx;
+      if (shiftKey) { if (newW / Math.max(newH,1) > aspect) { newW = newH * aspect; newL = startLeft + (startWidth - newW); } else newH = newW / aspect; }
+      break;
+    case 'left':
+      newW = startWidth - dx; newL = startLeft + dx;
+      if (shiftKey) newH = newW / aspect;
+      break;
+  }
+  newW = Math.max(newW, MIN_OBJECT_SIZE);
+  newH = Math.max(newH, MIN_OBJECT_SIZE);
+  if (isText) {
+    obj.style.width = newW + 'px';
+    obj.style.left  = newL + 'px';
+  } else {
+    obj.style.width  = newW + 'px';
+    obj.style.height = newH + 'px';
+    obj.style.left   = newL + 'px';
+    obj.style.top    = newT + 'px';
+    if (obj.classList.contains('group-object') && resizeChildSnapshots.length > 0) {
+      const sx = newW / startWidth;
+      const sy = newH / startHeight;
+      resizeChildSnapshots.forEach(snap => {
+        snap.el.style.left   = (snap.left   * sx) + 'px';
+        snap.el.style.top    = (snap.top    * sy) + 'px';
+        snap.el.style.width  = Math.max(snap.width  * sx, MIN_OBJECT_SIZE) + 'px';
+        if (!snap.el.classList.contains('text-object'))
+          snap.el.style.height = Math.max(snap.height * sy, MIN_OBJECT_SIZE) + 'px';
+      });
+    }
+  }
+}
+
+// ============ FILENAME BAR ============
+
+function setupFilenameBar() {
+  const display = $('filename-display');
+  const input = $('filename-input');
+  if (!display || !input) return;
+  display.textContent = currentFilename;
+  input.value = currentFilename;
+  document.title = currentFilename;
+  display.addEventListener('click', function() {
+    display.style.display = 'none';
+    input.style.display = 'block';
+    input.focus();
+    input.select();
+  });
+  const commit = function() {
+    const val = (input.value.trim().replace(/\.html$/i, '')) || 'onefile';
+    currentFilename = val;
+    display.textContent = val;
+    input.value = val;
+    display.style.display = '';
+    input.style.display = 'none';
+    document.title = val;
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { input.value = currentFilename; display.style.display = ''; input.style.display = 'none'; }
+  });
+}
+
+// ============ TOUCH SUPPORT ============
+
+function setupTouchSupport() {
+  const container = $('canvas-container');
+  let lastPinchDist = null, lastPinchMidX = 0, lastPinchMidY = 0;
+  let lastTapTime = 0, lastTapTarget = null;
+
+  container.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const t0 = e.touches[0], t1 = e.touches[1];
+      lastPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      lastPinchMidX = (t0.clientX + t1.clientX) / 2;
+      lastPinchMidY = (t0.clientY + t1.clientY) / 2;
+      isDragging = false; isPanning = false; isResizing = false;
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const now = Date.now();
+    if (now - lastTapTime < 300 && lastTapTarget === e.target) {
+      lastTapTime = 0;
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      if (el && !el.closest('.canvas-object') && !el.closest('#floating-sidebar') && !isViewOnly()) {
+        const c = screenToCanvas(t.clientX, t.clientY);
+        showTextDialog(function(html) { recordUndo(); addTextToCanvas(html, c.x, c.y); }, { x: t.clientX, y: t.clientY });
+      }
+      return;
+    }
+    lastTapTime = now; lastTapTarget = e.target;
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    if (!el || el.closest('#floating-sidebar') || el.closest('#zoom-controls') || el.closest('#filename-bar')) return;
+    const handle = el.closest('.resize-handle');
+    let obj = el.closest('.canvas-object');
+    while (obj && obj.parentElement && obj.parentElement.classList.contains('group-object')) obj = obj.parentElement;
+    if (handle && !isViewOnly()) {
+      isResizing = true;
+      resizeDirection = handle.dataset.position;
+      let topObj = handle.closest('.canvas-object');
+      while (topObj.parentElement && topObj.parentElement.classList.contains('group-object')) topObj = topObj.parentElement;
+      if (!selectedObjects.includes(topObj)) { clearSelection(); selectObject(topObj); }
+      resizeChildSnapshots = [];
+      if (topObj.classList.contains('group-object')) {
+        Array.from(topObj.children).filter(c => c.classList && c.classList.contains('canvas-object'))
+          .forEach(c => resizeChildSnapshots.push({ el: c,
+            left: parseFloat(c.style.left)||0, top: parseFloat(c.style.top)||0,
+            width: parseFloat(c.style.width)||c.offsetWidth, height: parseFloat(c.style.height)||c.offsetHeight }));
+      }
+      startWidth = parseFloat(topObj.style.width)||topObj.offsetWidth;
+      startHeight = parseFloat(topObj.style.height)||topObj.offsetHeight;
+      startLeft = parseFloat(topObj.style.left)||0; startTop = parseFloat(topObj.style.top)||0;
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      beginGesture();
+    } else if (obj && !isViewOnly()) {
+      isDragging = true;
+      if (!selectedObjects.includes(obj)) { clearSelection(); selectObject(obj); }
+      selectedObjects.forEach(o => { o._initialLeft = parseFloat(o.style.left)||0; o._initialTop = parseFloat(o.style.top)||0; });
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      beginGesture();
+    } else {
+      isPanning = true;
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      container.classList.add('panning');
+      if (!isViewOnly()) clearSelection();
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2 && lastPinchDist !== null) {
+      e.preventDefault();
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const midX = (t0.clientX + t1.clientX) / 2, midY = (t0.clientY + t1.clientY) / 2;
+      zoomAtPoint(scale * dist / lastPinchDist, midX, midY);
+      panX += midX - lastPinchMidX; panY += midY - lastPinchMidY;
+      updateCanvasTransform();
+      lastPinchDist = dist; lastPinchMidX = midX; lastPinchMidY = midY;
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (isPanning) {
+      e.preventDefault();
+      panX += t.clientX - dragStartX; panY += t.clientY - dragStartY;
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      updateCanvasTransform();
+    } else if (isDragging && selectedObjects.length > 0) {
+      e.preventDefault();
+      applyDragMove(t.clientX, t.clientY);
+    } else if (isResizing && selectedObjects.length > 0) {
+      e.preventDefault();
+      applyResizeMove(t.clientX, t.clientY, false);
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', function(e) {
+    if (e.touches.length < 2) lastPinchDist = null;
+    if (e.touches.length === 0) {
+      if (isPanning) {
+        isPanning = false; $('canvas-container').classList.remove('panning');
+      } else if (isDragging) {
+        const moved = selectedObjects.some(o => o._initialLeft !== undefined &&
+          (parseFloat(o.style.left) !== o._initialLeft || parseFloat(o.style.top) !== o._initialTop));
+        commitGesture(moved);
+        selectedObjects.forEach(o => { delete o._initialLeft; delete o._initialTop; });
+        isDragging = false;
+      } else if (isResizing) {
+        const obj = selectedObjects[selectedObjects.length - 1];
+        const changed = obj && (Math.abs((parseFloat(obj.style.width)||0) - startWidth) > 0.5 ||
+          Math.abs((parseFloat(obj.style.height)||0) - startHeight) > 0.5);
+        commitGesture(changed);
+        isResizing = false; resizeDirection = ''; resizeChildSnapshots = [];
+      }
+    }
+  });
 }
 
 // ============ EVENT LISTENERS ============
@@ -1314,6 +1592,8 @@ function setupEventListeners() {
     }
   });
   $('save-btn').addEventListener('click', saveCanvas);
+  $('undo-btn').addEventListener('click', () => { if (!isViewOnly()) undo(); });
+  $('redo-btn').addEventListener('click', () => { if (!isViewOnly()) redo(); });
 
   $('zoom-in-btn').addEventListener('click', () => zoomCentered(1.2));
   $('zoom-out-btn').addEventListener('click', () => zoomCentered(1 / 1.2));
@@ -1458,97 +1738,10 @@ function setupEventListeners() {
       updateCanvasTransform();
     } else if (isDragging && selectedObjects.length > 0) {
       e.preventDefault();
-      const dx = (e.clientX - dragStartX) / scale;
-      const dy = (e.clientY - dragStartY) / scale;
-      selectedObjects.forEach(o => {
-        if (o._initialLeft !== undefined) {
-          o.style.left = (o._initialLeft + dx) + 'px';
-          o.style.top  = (o._initialTop  + dy) + 'px';
-        }
-      });
+      applyDragMove(e.clientX, e.clientY);
     } else if (isResizing && selectedObjects.length > 0) {
       e.preventDefault();
-      const obj = selectedObjects[selectedObjects.length - 1];
-      if (obj.classList.contains('text-object') &&
-          (resizeDirection.indexOf('top') !== -1 || resizeDirection.indexOf('bottom') !== -1) &&
-          resizeDirection !== 'left' && resizeDirection !== 'right') {
-        return;
-      }
-      const dx = (e.clientX - dragStartX) / scale;
-      const dy = (e.clientY - dragStartY) / scale;
-      let newW = startWidth, newH = startHeight, newL = startLeft, newT = startTop;
-      const aspect = startWidth / Math.max(startHeight, 1);
-      switch (resizeDirection) {
-        case 'top-left':
-          newW = startWidth - dx; newH = startHeight - dy;
-          newL = startLeft + dx;  newT = startTop + dy;
-          if (e.shiftKey) {
-            if (newW / Math.max(newH, 1) > aspect) { newW = newH * aspect; newL = startLeft + (startWidth - newW); }
-            else { newH = newW / aspect; newT = startTop + (startHeight - newH); }
-          }
-          break;
-        case 'top':
-          newH = startHeight - dy; newT = startTop + dy;
-          if (e.shiftKey) { newW = newH * aspect; newL = startLeft + (startWidth - newW) / 2; }
-          break;
-        case 'top-right':
-          newW = startWidth + dx; newH = startHeight - dy; newT = startTop + dy;
-          if (e.shiftKey) {
-            if (newW / Math.max(newH, 1) > aspect) newW = newH * aspect;
-            else { newH = newW / aspect; newT = startTop + (startHeight - newH); }
-          }
-          break;
-        case 'right':
-          newW = startWidth + dx;
-          if (e.shiftKey) newH = newW / aspect;
-          break;
-        case 'bottom-right':
-          newW = startWidth + dx; newH = startHeight + dy;
-          if (e.shiftKey) {
-            if (newW / Math.max(newH, 1) > aspect) newW = newH * aspect;
-            else newH = newW / aspect;
-          }
-          break;
-        case 'bottom':
-          newH = startHeight + dy;
-          if (e.shiftKey) { newW = newH * aspect; newL = startLeft + (startWidth - newW) / 2; }
-          break;
-        case 'bottom-left':
-          newW = startWidth - dx; newH = startHeight + dy; newL = startLeft + dx;
-          if (e.shiftKey) {
-            if (newW / Math.max(newH, 1) > aspect) { newW = newH * aspect; newL = startLeft + (startWidth - newW); }
-            else newH = newW / aspect;
-          }
-          break;
-        case 'left':
-          newW = startWidth - dx; newL = startLeft + dx;
-          if (e.shiftKey) newH = newW / aspect;
-          break;
-      }
-      newW = Math.max(newW, MIN_OBJECT_SIZE);
-      newH = Math.max(newH, MIN_OBJECT_SIZE);
-      const isText = obj.classList.contains('text-object');
-      if (isText) {
-        obj.style.width = newW + 'px';
-        obj.style.left  = newL + 'px';
-      } else {
-        obj.style.width  = newW + 'px';
-        obj.style.height = newH + 'px';
-        obj.style.left   = newL + 'px';
-        obj.style.top    = newT + 'px';
-        if (obj.classList.contains('group-object') && resizeChildSnapshots.length > 0) {
-          const sx = newW / startWidth;
-          const sy = newH / startHeight;
-          resizeChildSnapshots.forEach(snap => {
-            snap.el.style.left   = (snap.left   * sx) + 'px';
-            snap.el.style.top    = (snap.top    * sy) + 'px';
-            snap.el.style.width  = Math.max(snap.width  * sx, MIN_OBJECT_SIZE) + 'px';
-            if (!snap.el.classList.contains('text-object')) {
-              snap.el.style.height = Math.max(snap.height * sy, MIN_OBJECT_SIZE) + 'px';
-            }
-          });
-        }
-      }
+      applyResizeMove(e.clientX, e.clientY, e.shiftKey);
     } else if (isSelecting) {
       updateDragSelection(e);
     }
@@ -1767,6 +1960,7 @@ function init() {
     panX  = embeddedState.panX  || 0;
     panY  = embeddedState.panY  || 0;
     scale = embeddedState.scale || 1;
+    if (embeddedState.filename) currentFilename = embeddedState.filename;
     updateCanvasTransform();
   } else {
     scale = 1;
@@ -1776,6 +1970,8 @@ function init() {
   setupEventListeners();
   setupPlatformTooltips();
   buildShortcutsPanel();
+  setupFilenameBar();
+  setupTouchSupport();
   try { document.execCommand('defaultParagraphSeparator', false, 'br'); } catch (_) {}
 }
 
