@@ -127,6 +127,24 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 .text-object.selected > .resize-handle.left,
 .text-object.selected > .resize-handle.right { display: block !important; }
 
+.connect-handle {
+  width: 10px; height: 10px; background-color: #1877F2;
+  border: 2px solid white; border-radius: 50%;
+  position: absolute; display: none; z-index: 11;
+  cursor: crosshair; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.connect-handle::before {
+  content: ""; position: absolute; top: -8px; left: -8px;
+  width: 26px; height: 26px; z-index: -1;
+}
+.connect-handle.top    { top: -8px;    left: 50%; transform: translateX(-50%); }
+.connect-handle.right  { top: 50%; right: -8px;   transform: translateY(-50%); }
+.connect-handle.bottom { bottom: -8px; left: 50%; transform: translateX(-50%); }
+.connect-handle.left   { top: 50%; left: -8px;    transform: translateY(-50%); }
+.canvas-object.selected:not(.group-object) > .connect-handle { display: block; }
+.text-edit-mode > .connect-handle { display: none !important; }
+#canvas-container.view-only .connect-handle { display: none !important; }
+
 .text-object {
   padding: 10px; min-width: 50px; min-height: 25px;
   background-color: #ffffff; color: #000000;
@@ -392,6 +410,9 @@ let undoStack = [], redoStack = [];
 let pendingSnapshot = null;
 let dirty = false;
 let currentFilename = 'onefile';
+let connectors = [];
+let isConnecting = false;
+let connectingFromObj = null, connectingFromSide = null;
 
 function $(id) { return document.getElementById(id); }
 function generateId() { return 'obj_' + Math.random().toString(36).slice(2, 11); }
@@ -430,7 +451,8 @@ function captureState() {
     .filter(c => c.classList && c.classList.contains('canvas-object'))
     .map(captureObject);
   const selection = selectedObjects.map(o => o.id).filter(Boolean);
-  return { objects: objects, selection: selection };
+  const conns = connectors.map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
+  return { objects: objects, selection: selection, connectors: conns };
 }
 
 function restoreObject(state, parent) {
@@ -484,6 +506,8 @@ function applyState(state) {
     const el = idToEl[id];
     if (el) selectObject(el, true);
   });
+  connectors = (state.connectors || []).map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
+  renderConnectors();
 }
 
 // ============ UNDO / REDO ============
@@ -594,6 +618,7 @@ function createImageElement(src, id) {
   img.src = src;
   wrap.appendChild(img);
   addResizeHandles(wrap);
+  addConnectHandles(wrap);
   return wrap;
 }
 
@@ -606,6 +631,7 @@ function createTextElement(textHTML, id) {
   tc.innerHTML = textHTML || '';
   wrap.appendChild(tc);
   addResizeHandles(wrap);
+  addConnectHandles(wrap);
   wrap.addEventListener('dblclick', function(e) {
     e.stopPropagation();
     if ($('canvas-container').classList.contains('view-only')) return;
@@ -723,6 +749,162 @@ function getTopLevelObjects() {
 
 // ============ PAN / ZOOM ============
 
+// ============ CONNECTORS ============
+
+function getCanvasRect(el) {
+  let x = parseFloat(el.style.left) || 0;
+  let y = parseFloat(el.style.top)  || 0;
+  const w = parseFloat(el.style.width)  || el.offsetWidth;
+  const h = parseFloat(el.style.height) || el.offsetHeight;
+  let p = el.parentElement;
+  while (p && p.classList && p.classList.contains('group-object')) {
+    x += parseFloat(p.style.left) || 0;
+    y += parseFloat(p.style.top)  || 0;
+    p = p.parentElement;
+  }
+  return { x: x, y: y, w: w, h: h };
+}
+
+function connectorAnchor(rect, side) {
+  switch (side) {
+    case 'top':    return { x: rect.x + rect.w / 2, y: rect.y };
+    case 'bottom': return { x: rect.x + rect.w / 2, y: rect.y + rect.h };
+    case 'left':   return { x: rect.x,              y: rect.y + rect.h / 2 };
+    case 'right':  return { x: rect.x + rect.w,     y: rect.y + rect.h / 2 };
+    default:       return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  }
+}
+
+function autoConnectorSides(a, b) {
+  const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
+  const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return { fromSide: dx > 0 ? 'right' : 'left',
+             toSide:   dx > 0 ? 'left'  : 'right' };
+  }
+  return { fromSide: dy > 0 ? 'bottom' : 'top',
+           toSide:   dy > 0 ? 'top'    : 'bottom' };
+}
+
+function addConnectHandles(obj) {
+  ['top','right','bottom','left'].forEach(side => {
+    const h = document.createElement('div');
+    h.className = 'connect-handle ' + side;
+    h.dataset.side = side;
+    obj.appendChild(h);
+  });
+}
+
+function ensureConnectorLayer() {
+  let svg = $('connector-layer');
+  if (svg) return svg;
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper) return null;
+  const NS = 'http://www.w3.org/2000/svg';
+  svg = document.createElementNS(NS, 'svg');
+  svg.id = 'connector-layer';
+  svg.setAttribute('width', '100000');
+  svg.setAttribute('height', '100000');
+  svg.setAttribute('viewBox', '-50000 -50000 100000 100000');
+  svg.setAttribute('style', 'position:absolute; left:-50000px; top:-50000px; pointer-events:none; overflow:visible;');
+  wrapper.insertBefore(svg, wrapper.firstChild);
+  return svg;
+}
+
+function startConnect(handle, clientX, clientY) {
+  const obj = handle.closest('.canvas-object');
+  if (!obj) return false;
+  let topObj = obj;
+  while (topObj.parentElement && topObj.parentElement.classList.contains('group-object')) {
+    topObj = topObj.parentElement;
+  }
+  isConnecting = true;
+  connectingFromObj = topObj;
+  connectingFromSide = handle.dataset.side;
+  const svg = ensureConnectorLayer();
+  if (!svg) return false;
+  const NS = 'http://www.w3.org/2000/svg';
+  let temp = document.getElementById('temp-connector');
+  if (!temp) {
+    temp = document.createElementNS(NS, 'path');
+    temp.id = 'temp-connector';
+    temp.setAttribute('stroke', '#1877F2');
+    temp.setAttribute('stroke-width', '2');
+    temp.setAttribute('stroke-dasharray', '6 4');
+    temp.setAttribute('fill', 'none');
+    temp.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(temp);
+  }
+  updateConnect(clientX, clientY);
+  return true;
+}
+
+function updateConnect(clientX, clientY) {
+  if (!isConnecting || !connectingFromObj) return;
+  const ra = getCanvasRect(connectingFromObj);
+  const a = connectorAnchor(ra, connectingFromSide);
+  const c = screenToCanvas(clientX, clientY);
+  const temp = document.getElementById('temp-connector');
+  if (temp) temp.setAttribute('d', 'M ' + a.x + ' ' + a.y + ' L ' + c.x + ' ' + c.y);
+}
+
+function endConnect(clientX, clientY) {
+  if (!isConnecting) return;
+  const fromObj = connectingFromObj;
+  const fromSide = connectingFromSide;
+  isConnecting = false;
+  connectingFromObj = null;
+  connectingFromSide = null;
+  const temp = document.getElementById('temp-connector');
+  if (temp) temp.remove();
+  if (!fromObj) return;
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el) return;
+  let toObj = el.closest('.canvas-object');
+  while (toObj && toObj.parentElement && toObj.parentElement.classList.contains('group-object')) {
+    toObj = toObj.parentElement;
+  }
+  if (!toObj || toObj === fromObj || toObj.classList.contains('group-object')) return;
+  recordUndo();
+  connectors.push({
+    id: 'conn_' + Math.random().toString(36).slice(2, 11),
+    fromId: fromObj.id,
+    toId: toObj.id,
+    fromSide: fromSide
+  });
+  renderConnectors();
+}
+
+function renderConnectors() {
+  const svg = ensureConnectorLayer();
+  if (!svg) return;
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  connectors.forEach(c => {
+    const from = document.getElementById(c.fromId);
+    const to   = document.getElementById(c.toId);
+    if (!from || !to) return;
+    const ra = getCanvasRect(from);
+    const rb = getCanvasRect(to);
+    let fs = c.fromSide, ts = c.toSide;
+    if (!fs || !ts) {
+      const auto = autoConnectorSides(ra, rb);
+      fs = fs || auto.fromSide;
+      ts = ts || auto.toSide;
+    }
+    const a = connectorAnchor(ra, fs);
+    const b = connectorAnchor(rb, ts);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y);
+    path.setAttribute('stroke', '#1a1a1a');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    path.setAttribute('data-connector-id', c.id);
+    svg.appendChild(path);
+  });
+}
+
 function updateCanvasTransform() {
   $('canvas-wrapper').style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
   const c = $('canvas-container');
@@ -737,6 +919,7 @@ function updateCanvasTransform() {
     c.style.backgroundImage = 'none';
   }
   $('zoom-percentage').textContent = Math.round(scale * 100) + '%';
+  renderConnectors();
 }
 
 function centerCanvas() {
@@ -1140,7 +1323,8 @@ function saveCanvas() {
     panY: panY,
     scale: scale,
     filename: currentFilename,
-    objects: captureState().objects
+    objects: captureState().objects,
+    connectors: connectors.map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }))
   };
   const FN_NAMES = [
     'generateId','screenToCanvas',
@@ -1150,6 +1334,8 @@ function saveCanvas() {
     'createImageElement','createTextElement','createGroupElement',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
+    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors',
+    'addConnectHandles','startConnect','updateConnect','endConnect',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
@@ -1185,6 +1371,9 @@ function saveCanvas() {
     "let pendingSnapshot = null;",
     "let dirty = false;",
     "let currentFilename = " + JSON.stringify(currentFilename) + ";",
+    "let connectors = [];",
+    "let isConnecting = false;",
+    "let connectingFromObj = null, connectingFromSide = null;",
     "function $(id) { return document.getElementById(id); }"
   ].join('\n');
   const styleCss = document.querySelector('style').textContent;
@@ -1298,6 +1487,7 @@ function applyDragMove(clientX, clientY) {
       o.style.top  = (o._initialTop  + dy) + 'px';
     }
   });
+  renderConnectors();
 }
 
 function applyResizeMove(clientX, clientY, shiftKey) {
@@ -1366,6 +1556,7 @@ function applyResizeMove(clientX, clientY, shiftKey) {
       });
     }
   }
+  renderConnectors();
 }
 
 // ============ FILENAME BAR ============
@@ -1432,6 +1623,11 @@ function setupTouchSupport() {
     lastTapTime = now; lastTapTarget = e.target;
     const el = document.elementFromPoint(t.clientX, t.clientY);
     if (!el || el.closest('#floating-sidebar') || el.closest('#zoom-controls') || el.closest('#filename-bar')) return;
+    const connectHandleT = el.closest('.connect-handle');
+    if (connectHandleT && !isViewOnly()) {
+      startConnect(connectHandleT, t.clientX, t.clientY);
+      return;
+    }
     const handle = el.closest('.resize-handle');
     let obj = el.closest('.canvas-object');
     while (obj && obj.parentElement && obj.parentElement.classList.contains('group-object')) obj = obj.parentElement;
@@ -1481,6 +1677,11 @@ function setupTouchSupport() {
     }
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
+    if (isConnecting) {
+      e.preventDefault();
+      updateConnect(t.clientX, t.clientY);
+      return;
+    }
     if (isPanning) {
       e.preventDefault();
       panX += t.clientX - dragStartX; panY += t.clientY - dragStartY;
@@ -1498,6 +1699,11 @@ function setupTouchSupport() {
   document.addEventListener('touchend', function(e) {
     if (e.touches.length < 2) lastPinchDist = null;
     if (e.touches.length === 0) {
+      if (isConnecting) {
+        const ct = (e.changedTouches && e.changedTouches[0]) || null;
+        endConnect(ct ? ct.clientX : 0, ct ? ct.clientY : 0);
+        return;
+      }
       if (isPanning) {
         isPanning = false; $('canvas-container').classList.remove('panning');
       } else if (isDragging) {
@@ -1589,6 +1795,8 @@ function setupEventListeners() {
       recordUndo();
       $('canvas-wrapper').innerHTML = '';
       selectedObjects = [];
+      connectors = [];
+      renderConnectors();
     }
   });
   $('save-btn').addEventListener('click', saveCanvas);
@@ -1657,6 +1865,14 @@ function setupEventListeners() {
       dragStartX = e.clientX;
       dragStartY = e.clientY;
       container.classList.add('panning');
+      return;
+    }
+
+    const connectHandle = e.target.closest('.connect-handle');
+    if (connectHandle) {
+      e.preventDefault();
+      e.stopPropagation();
+      startConnect(connectHandle, e.clientX, e.clientY);
       return;
     }
 
@@ -1729,6 +1945,11 @@ function setupEventListeners() {
   });
 
   document.addEventListener('mousemove', function(e) {
+    if (isConnecting) {
+      e.preventDefault();
+      updateConnect(e.clientX, e.clientY);
+      return;
+    }
     if (isPanning) {
       e.preventDefault();
       panX += e.clientX - dragStartX;
@@ -1748,6 +1969,10 @@ function setupEventListeners() {
   });
 
   document.addEventListener('mouseup', function(e) {
+    if (isConnecting) {
+      endConnect(e.clientX, e.clientY);
+      return;
+    }
     if (isPanning) {
       isPanning = false;
       container.classList.remove('panning');
@@ -1961,6 +2186,7 @@ function init() {
     panY  = embeddedState.panY  || 0;
     scale = embeddedState.scale || 1;
     if (embeddedState.filename) currentFilename = embeddedState.filename;
+    connectors = (embeddedState.connectors || []).map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
     updateCanvasTransform();
   } else {
     scale = 1;
