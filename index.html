@@ -127,9 +127,10 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 .text-object.selected > .resize-handle.left,
 .text-object.selected > .resize-handle.right { display: block !important; }
 
+
 .text-object {
   padding: 10px; min-width: 50px; min-height: 25px;
-  background-color: #ffffff; color: #000000;
+  background-color: transparent; color: #000000;
   border-radius: 4px; height: auto !important;
   resize: none; overflow: visible;
   font-weight: 500;
@@ -137,6 +138,7 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
+.text-object.selected { background-color: #ffffff; }
 .text-content {
   width: 100%; height: 100%; padding: 0;
   white-space: pre-wrap; overflow: auto; box-sizing: border-box;
@@ -147,6 +149,27 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   box-shadow: 0 0 0 2px #1877F2 !important;
 }
 .text-edit-mode .text-content { outline: none; }
+
+.mind-object {
+  background: #f5f1ea;
+  border-radius: 20px;
+  padding: 8px 20px;
+  min-width: 120px;
+  max-width: 240px;
+  width: max-content;
+  color: #2c2c2c;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.13);
+  white-space: normal;
+  line-height: 1.45;
+  height: auto !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mind-label { outline: none; min-width: 20px; display: inline-block; text-align: center; }
+.mind-edit-mode { box-shadow: 0 0 0 2px #1877F2, 0 1px 4px rgba(0,0,0,0.13) !important; cursor: text; }
 
 .image-object img { display: block; }
 
@@ -344,6 +367,7 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   <ul>
     <li><kbd>T</kbd> – Add text</li>
     <li><kbd>I</kbd> – Add image</li>
+    <li><kbd>M</kbd> – Add mindmap node</li>
     <li><kbd>Space</kbd> + drag – Pan canvas</li>
     <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + click – Multi-select</li>
     <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + drag – Marquee select</li>
@@ -392,6 +416,7 @@ let undoStack = [], redoStack = [];
 let pendingSnapshot = null;
 let dirty = false;
 let currentFilename = 'onefile';
+let connectors = [];
 
 function $(id) { return document.getElementById(id); }
 function generateId() { return 'obj_' + Math.random().toString(36).slice(2, 11); }
@@ -403,7 +428,8 @@ function captureObject(obj) {
   const out = {
     id: obj.id,
     type: obj.classList.contains('image-object') ? 'image' :
-          obj.classList.contains('text-object')  ? 'text'  : 'group',
+          obj.classList.contains('text-object')  ? 'text'  :
+          obj.classList.contains('mind-object')  ? 'mindmap' : 'group',
     left: parseFloat(obj.style.left) || 0,
     top:  parseFloat(obj.style.top)  || 0,
     width:  parseFloat(obj.style.width)  || obj.offsetWidth,
@@ -416,6 +442,10 @@ function captureObject(obj) {
   } else if (out.type === 'text') {
     const tc = obj.querySelector('.text-content');
     out.text = tc ? tc.innerHTML : '';
+  } else if (out.type === 'mindmap') {
+    const label = obj.querySelector('.mind-label');
+    out.text = label ? label.textContent : '';
+    if (obj.dataset.parentId) out.parentId = obj.dataset.parentId;
   } else if (out.type === 'group') {
     out.children = Array.from(obj.children)
       .filter(c => c.classList && c.classList.contains('canvas-object'))
@@ -430,7 +460,8 @@ function captureState() {
     .filter(c => c.classList && c.classList.contains('canvas-object'))
     .map(captureObject);
   const selection = selectedObjects.map(o => o.id).filter(Boolean);
-  return { objects: objects, selection: selection };
+  const conns = connectors.map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
+  return { objects: objects, selection: selection, connectors: conns };
 }
 
 function restoreObject(state, parent) {
@@ -439,6 +470,8 @@ function restoreObject(state, parent) {
     el = createImageElement(state.src, state.id);
   } else if (state.type === 'text') {
     el = createTextElement(state.text, state.id);
+  } else if (state.type === 'mindmap') {
+    el = createMindmapElement(state.text, state.id, state.parentId);
   } else if (state.type === 'group') {
     el = createGroupElement(state.id);
     parent.appendChild(el);
@@ -484,6 +517,8 @@ function applyState(state) {
     const el = idToEl[id];
     if (el) selectObject(el, true);
   });
+  connectors = (state.connectors || []).map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
+  renderConnectors();
 }
 
 // ============ UNDO / REDO ============
@@ -622,6 +657,121 @@ function createGroupElement(id) {
   return grp;
 }
 
+function createMindmapElement(text, id, parentId) {
+  const wrap = document.createElement('div');
+  wrap.className = 'canvas-object mind-object';
+  wrap.id = id || generateId();
+  if (parentId) wrap.dataset.parentId = parentId;
+  const label = document.createElement('span');
+  label.className = 'mind-label';
+  label.textContent = text || '';
+  wrap.appendChild(label);
+  wrap.addEventListener('dblclick', function(e) {
+    e.stopPropagation();
+    if (isViewOnly()) return;
+    startEditingMind(wrap);
+  });
+  return wrap;
+}
+
+function addMindmapToCanvas(text, left, top, id, parentId) {
+  const wrapper = $('canvas-wrapper');
+  const wrap = createMindmapElement(text, id, parentId);
+  const cx = (window.innerWidth / 2 - panX) / scale;
+  const cy = (window.innerHeight / 2 - panY) / scale;
+  wrap.style.left = (left !== undefined ? left : cx - 60) + 'px';
+  wrap.style.top  = (top  !== undefined ? top  : cy - 20) + 'px';
+  wrapper.appendChild(wrap);
+  wrap._origRect = {
+    left: parseFloat(wrap.style.left) || 0,
+    top:  parseFloat(wrap.style.top)  || 0,
+    width:  wrap.offsetWidth,
+    height: wrap.offsetHeight
+  };
+  clearSelection();
+  selectObject(wrap);
+  return wrap;
+}
+
+function startEditingMind(el) {
+  if (isEditing) return;
+  const label = el.querySelector('.mind-label');
+  if (!label) return;
+  const beforeSnapshot = captureState();
+  const beforeText = label.textContent;
+  isEditing = true;
+  el.classList.add('mind-edit-mode');
+  label.contentEditable = 'true';
+  label.focus();
+  const r = document.createRange();
+  r.selectNodeContents(label);
+  r.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+
+  let finished = false;
+  const finish = function(removeIfEmpty) {
+    if (finished) return;
+    finished = true;
+    label.contentEditable = 'false';
+    el.classList.remove('mind-edit-mode');
+    isEditing = false;
+    label.removeEventListener('blur', onBlur);
+    label.removeEventListener('keydown', onKeydown);
+    if (removeIfEmpty && label.textContent.trim() === '') {
+      el.remove();
+      renderConnectors();
+      return;
+    }
+    if (label.textContent !== beforeText) pushUndo(beforeSnapshot);
+  };
+  const onBlur = function() {
+    setTimeout(function() { if (document.activeElement !== label) finish(true); }, 50);
+  };
+  const onKeydown = function(e) {
+    if (e.key === 'Escape') { e.preventDefault(); label.textContent = beforeText; finish(true); return; }
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      finish();
+      recordUndo();
+      const child = addMindmapToCanvas('', parseFloat(el.style.left) + el.offsetWidth + 60, parseFloat(el.style.top) + Math.round((el.offsetHeight - 38) / 2), undefined, el.id);
+      renderConnectors();
+      setTimeout(function() { startEditingMind(child); }, 0);
+      return;
+    }
+    if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      const pid = el.dataset.parentId;
+      if (pid) {
+        const par = document.getElementById(pid);
+        if (par && par.dataset.parentId) { el.dataset.parentId = par.dataset.parentId; }
+        else { delete el.dataset.parentId; }
+        renderConnectors();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      finish();
+      const pid = el.dataset.parentId || undefined;
+      recordUndo();
+      const sib = addMindmapToCanvas('', parseFloat(el.style.left), parseFloat(el.style.top) + el.offsetHeight + 16, undefined, pid);
+      renderConnectors();
+      setTimeout(function() { startEditingMind(sib); }, 0);
+      return;
+    }
+    e.stopPropagation();
+  };
+  label.addEventListener('blur', onBlur);
+  label.addEventListener('keydown', onKeydown);
+  label.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+}
+
 function addImageToCanvas(src, left, top, width, height, id, parent) {
   parent = parent || $('canvas-wrapper');
   const wrap = createImageElement(src, id);
@@ -723,6 +873,123 @@ function getTopLevelObjects() {
 
 // ============ PAN / ZOOM ============
 
+// ============ CONNECTORS ============
+
+function getCanvasRect(el) {
+  let x = parseFloat(el.style.left) || 0;
+  let y = parseFloat(el.style.top)  || 0;
+  const w = parseFloat(el.style.width)  || el.offsetWidth;
+  const h = parseFloat(el.style.height) || el.offsetHeight;
+  let p = el.parentElement;
+  while (p && p.classList && p.classList.contains('group-object')) {
+    x += parseFloat(p.style.left) || 0;
+    y += parseFloat(p.style.top)  || 0;
+    p = p.parentElement;
+  }
+  return { x: x, y: y, w: w, h: h };
+}
+
+function connectorAnchor(rect, side) {
+  switch (side) {
+    case 'top':    return { x: rect.x + rect.w / 2, y: rect.y };
+    case 'bottom': return { x: rect.x + rect.w / 2, y: rect.y + rect.h };
+    case 'left':   return { x: rect.x,              y: rect.y + rect.h / 2 };
+    case 'right':  return { x: rect.x + rect.w,     y: rect.y + rect.h / 2 };
+    default:       return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  }
+}
+
+function autoConnectorSides(a, b) {
+  const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
+  const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return { fromSide: dx > 0 ? 'right' : 'left',
+             toSide:   dx > 0 ? 'left'  : 'right' };
+  }
+  return { fromSide: dy > 0 ? 'bottom' : 'top',
+           toSide:   dy > 0 ? 'top'    : 'bottom' };
+}
+
+function ensureConnectorLayer() {
+  let svg = $('connector-layer');
+  if (svg) return svg;
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper) return null;
+  const NS = 'http://www.w3.org/2000/svg';
+  svg = document.createElementNS(NS, 'svg');
+  svg.id = 'connector-layer';
+  svg.setAttribute('width', '100000');
+  svg.setAttribute('height', '100000');
+  svg.setAttribute('viewBox', '-50000 -50000 100000 100000');
+  svg.setAttribute('style', 'position:absolute; left:-50000px; top:-50000px; pointer-events:none; overflow:visible;');
+  wrapper.insertBefore(svg, wrapper.firstChild);
+  return svg;
+}
+
+function renderConnectors() {
+  const svg = ensureConnectorLayer();
+  if (!svg) return;
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  connectors.forEach(c => {
+    const from = document.getElementById(c.fromId);
+    const to   = document.getElementById(c.toId);
+    if (!from || !to) return;
+    const ra = getCanvasRect(from);
+    const rb = getCanvasRect(to);
+    let fs = c.fromSide, ts = c.toSide;
+    if (!fs || !ts) {
+      const auto = autoConnectorSides(ra, rb);
+      fs = fs || auto.fromSide;
+      ts = ts || auto.toSide;
+    }
+    const a = connectorAnchor(ra, fs);
+    const b = connectorAnchor(rb, ts);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y);
+    path.setAttribute('stroke', '#1a1a1a');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    path.setAttribute('data-connector-id', c.id);
+    svg.appendChild(path);
+  });
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper) return;
+  Array.from(wrapper.querySelectorAll('.mind-object[data-parent-id]')).forEach(function(child) {
+    const parent = document.getElementById(child.dataset.parentId);
+    if (!parent) return;
+    const ra = getCanvasRect(parent);
+    const rb = getCanvasRect(child);
+    const a = connectorAnchor(ra, 'right');
+    const b = connectorAnchor(rb, 'left');
+    const mx = (a.x + b.x) / 2;
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M ' + a.x + ' ' + a.y + ' C ' + mx + ' ' + a.y + ' ' + mx + ' ' + b.y + ' ' + b.x + ' ' + b.y);
+    path.setAttribute('stroke', '#c8bfb4');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(path);
+  });
+}
+
+function getMindDescendants(nodeEl) {
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper) return [];
+  const all = Array.from(wrapper.querySelectorAll('.mind-object'));
+  const ids = new Set([nodeEl.id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    all.forEach(function(n) {
+      if (!ids.has(n.id) && ids.has(n.dataset.parentId)) { ids.add(n.id); changed = true; }
+    });
+  }
+  ids.delete(nodeEl.id);
+  return all.filter(function(n) { return ids.has(n.id); });
+}
+
 function updateCanvasTransform() {
   $('canvas-wrapper').style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
   const c = $('canvas-container');
@@ -737,6 +1004,7 @@ function updateCanvasTransform() {
     c.style.backgroundImage = 'none';
   }
   $('zoom-percentage').textContent = Math.round(scale * 100) + '%';
+  renderConnectors();
 }
 
 function centerCanvas() {
@@ -1140,7 +1408,8 @@ function saveCanvas() {
     panY: panY,
     scale: scale,
     filename: currentFilename,
-    objects: captureState().objects
+    objects: captureState().objects,
+    connectors: connectors.map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }))
   };
   const FN_NAMES = [
     'generateId','screenToCanvas',
@@ -1148,8 +1417,11 @@ function saveCanvas() {
     'pushUndo','recordUndo','beginGesture','commitGesture','undo','redo',
     'addResizeHandles','revertHandleToOrigin',
     'createImageElement','createTextElement','createGroupElement',
+    'createMindmapElement','addMindmapToCanvas','startEditingMind',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
+    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants',
+    'initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
@@ -1185,6 +1457,7 @@ function saveCanvas() {
     "let pendingSnapshot = null;",
     "let dirty = false;",
     "let currentFilename = " + JSON.stringify(currentFilename) + ";",
+    "let connectors = [];",
     "function $(id) { return document.getElementById(id); }"
   ].join('\n');
   const styleCss = document.querySelector('style').textContent;
@@ -1289,15 +1562,45 @@ function buildShortcutsPanel() {
 
 // ============ DRAG / RESIZE HELPERS (shared by mouse + touch) ============
 
+function initDragInitials() {
+  const seen = new Set();
+  selectedObjects.forEach(function(o) {
+    o._initialLeft = parseFloat(o.style.left) || 0;
+    o._initialTop  = parseFloat(o.style.top)  || 0;
+    seen.add(o.id);
+    if (o.classList.contains('mind-object')) {
+      getMindDescendants(o).forEach(function(d) {
+        if (!seen.has(d.id)) {
+          d._initialLeft = parseFloat(d.style.left) || 0;
+          d._initialTop  = parseFloat(d.style.top)  || 0;
+          seen.add(d.id);
+        }
+      });
+    }
+  });
+}
+
 function applyDragMove(clientX, clientY) {
   const dx = (clientX - dragStartX) / scale;
   const dy = (clientY - dragStartY) / scale;
-  selectedObjects.forEach(o => {
+  const seen = new Set();
+  selectedObjects.forEach(function(o) {
     if (o._initialLeft !== undefined) {
       o.style.left = (o._initialLeft + dx) + 'px';
       o.style.top  = (o._initialTop  + dy) + 'px';
+      seen.add(o.id);
+    }
+    if (o.classList.contains('mind-object')) {
+      getMindDescendants(o).forEach(function(d) {
+        if (!seen.has(d.id) && d._initialLeft !== undefined) {
+          d.style.left = (d._initialLeft + dx) + 'px';
+          d.style.top  = (d._initialTop  + dy) + 'px';
+          seen.add(d.id);
+        }
+      });
     }
   });
+  renderConnectors();
 }
 
 function applyResizeMove(clientX, clientY, shiftKey) {
@@ -1366,6 +1669,7 @@ function applyResizeMove(clientX, clientY, shiftKey) {
       });
     }
   }
+  renderConnectors();
 }
 
 // ============ FILENAME BAR ============
@@ -1456,7 +1760,7 @@ function setupTouchSupport() {
     } else if (obj && !isViewOnly()) {
       isDragging = true;
       if (!selectedObjects.includes(obj)) { clearSelection(); selectObject(obj); }
-      selectedObjects.forEach(o => { o._initialLeft = parseFloat(o.style.left)||0; o._initialTop = parseFloat(o.style.top)||0; });
+      initDragInitials();
       dragStartX = t.clientX; dragStartY = t.clientY;
       beginGesture();
     } else {
@@ -1589,6 +1893,8 @@ function setupEventListeners() {
       recordUndo();
       $('canvas-wrapper').innerHTML = '';
       selectedObjects = [];
+      connectors = [];
+      renderConnectors();
     }
   });
   $('save-btn').addEventListener('click', saveCanvas);
@@ -1707,10 +2013,7 @@ function setupEventListeners() {
         clearSelection();
         selectObject(target);
       }
-      selectedObjects.forEach(o => {
-        o._initialLeft = parseFloat(o.style.left) || 0;
-        o._initialTop  = parseFloat(o.style.top)  || 0;
-      });
+      initDragInitials();
       dragStartX = e.clientX;
       dragStartY = e.clientY;
       beginGesture();
@@ -1791,6 +2094,7 @@ function setupEventListeners() {
       return;
     }
     if (isEditing) return;
+    if (e.key === 'Tab') { e.preventDefault(); return; }
 
     const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
     const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -1806,6 +2110,14 @@ function setupEventListeners() {
       e.preventDefault();
       fileInput.value = '';
       fileInput.click();
+      return;
+    }
+    if (e.code === 'KeyM' && !mod && !e.altKey) {
+      if (isViewOnly()) return;
+      e.preventDefault();
+      recordUndo();
+      const node = addMindmapToCanvas('');
+      startEditingMind(node);
       return;
     }
     if (e.key === '+' || e.key === '=') {
@@ -1828,8 +2140,13 @@ function setupEventListeners() {
       if (selectedObjects.length === 0) return;
       e.preventDefault();
       recordUndo();
-      selectedObjects.forEach(o => o.remove());
+      const toDelete = new Set(selectedObjects);
+      selectedObjects.forEach(function(o) {
+        if (o.classList.contains('mind-object')) getMindDescendants(o).forEach(function(d) { toDelete.add(d); });
+      });
+      toDelete.forEach(function(o) { o.remove(); });
       selectedObjects = [];
+      renderConnectors();
       return;
     }
     if (mod && e.code === 'KeyX') {
@@ -1961,6 +2278,7 @@ function init() {
     panY  = embeddedState.panY  || 0;
     scale = embeddedState.scale || 1;
     if (embeddedState.filename) currentFilename = embeddedState.filename;
+    connectors = (embeddedState.connectors || []).map(c => ({ id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide }));
     updateCanvasTransform();
   } else {
     scale = 1;
