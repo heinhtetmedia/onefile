@@ -285,9 +285,23 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   background-color: rgba(66,133,244,0.1);
   pointer-events: none; z-index: 50; display: none;
 }
+#image-ctx-menu {
+  position: fixed; display: none; z-index: 9999;
+  background: #fff; border-radius: 8px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.15); padding: 4px 0; min-width: 170px;
+  font-size: 13px; color: #222;
+}
+#image-ctx-menu div {
+  padding: 9px 16px; cursor: pointer;
+}
+#image-ctx-menu div:hover { background: #f2f2f2; }
 </style>
 </head>
 <body>
+<div id="image-ctx-menu">
+  <div id="img-ctx-copy">Copy image</div>
+  <div id="img-ctx-save">Save image as…</div>
+</div>
 <div id="canvas-container">
   <div id="canvas-wrapper"></div>
   <div id="selection-box"></div>
@@ -318,6 +332,17 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
       <rect x="14" y="14" width="10" height="10" fill="#edf1f4" stroke="#333" stroke-width="2"></rect>
       <path d="M11 6 L15 6 M14 18 L10 18" stroke="#333" stroke-width="1" stroke-linecap="round"></path>
       <path d="M6 12 L6 15 M18 10 L18 14" stroke="#333" stroke-width="1" stroke-linecap="round"></path>
+    </svg>
+  </button>
+  <button id="reflow-btn" class="tooltip" data-tooltip="Clean up mindmap layout" style="display:none">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round">
+      <rect x="2" y="9" width="6" height="5" rx="1.5"/>
+      <rect x="16" y="4" width="6" height="4" rx="1.5"/>
+      <rect x="16" y="11" width="6" height="4" rx="1.5"/>
+      <rect x="16" y="18" width="6" height="4" rx="1.5"/>
+      <line x1="8" y1="11.5" x2="13" y2="6"/>
+      <line x1="8" y1="11.5" x2="13" y2="13"/>
+      <line x1="8" y1="11.5" x2="13" y2="20"/>
     </svg>
   </button>
   <div class="sidebar-divider"></div>
@@ -616,6 +641,35 @@ function revertHandleToOrigin(obj, position) {
   }
 }
 
+function showImageMenu(e, wrap) {
+  e.preventDefault();
+  const menu = $('image-ctx-menu');
+  menu._src = wrap.querySelector('img') ? wrap.querySelector('img').src : '';
+  menu.style.display = 'block';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top  = e.clientY + 'px';
+  requestAnimationFrame(function() {
+    const r = menu.getBoundingClientRect();
+    if (r.right  > window.innerWidth)  menu.style.left = (e.clientX - r.width)  + 'px';
+    if (r.bottom > window.innerHeight) menu.style.top  = (e.clientY - r.height) + 'px';
+  });
+}
+function hideImageMenu() {
+  const menu = $('image-ctx-menu');
+  if (menu) menu.style.display = 'none';
+}
+function copyImageToClipboard(src) {
+  fetch(src).then(function(r) { return r.blob(); }).then(function(blob) {
+    navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+  }).catch(function() { window.open(src, '_blank'); });
+}
+function saveImageAs(src) {
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = 'image';
+  a.click();
+}
+
 function createImageElement(src, id) {
   const wrap = document.createElement('div');
   wrap.className = 'canvas-object image-object';
@@ -629,6 +683,10 @@ function createImageElement(src, id) {
   img.src = src;
   wrap.appendChild(img);
   addResizeHandles(wrap);
+  wrap.addEventListener('contextmenu', function(e) {
+    if (isViewOnly()) return;
+    showImageMenu(e, wrap);
+  });
   return wrap;
 }
 
@@ -846,6 +904,7 @@ function addTextToCanvas(textHTML, left, top, width, height, id, parent) {
 function clearSelection() {
   selectedObjects.forEach(o => o.classList.remove('selected'));
   selectedObjects = [];
+  updateMindBtn();
 }
 
 function selectObject(obj, additive) {
@@ -864,6 +923,7 @@ function selectObject(obj, additive) {
   }
   selectedObjects.push(obj);
   obj.classList.add('selected');
+  updateMindBtn();
 }
 
 function getTopLevelObjects() {
@@ -988,6 +1048,44 @@ function getMindDescendants(nodeEl) {
   }
   ids.delete(nodeEl.id);
   return all.filter(function(n) { return ids.has(n.id); });
+}
+
+function reflowMindTree(rootEl) {
+  const H_GAP = 80, V_GAP = 16;
+  const wrapper = $('canvas-wrapper');
+  function getChildren(el) {
+    return Array.from(wrapper.querySelectorAll('.mind-object[data-parent-id="' + el.id + '"]'));
+  }
+  function subtreeHeight(el) {
+    const ch = getChildren(el);
+    if (!ch.length) return el.offsetHeight;
+    const total = ch.reduce(function(s, c) { return s + subtreeHeight(c); }, 0) + (ch.length - 1) * V_GAP;
+    return Math.max(el.offsetHeight, total);
+  }
+  function positionSubtree(el, x, y) {
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    el._origRect = { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight };
+    const ch = getChildren(el);
+    if (!ch.length) return;
+    const totalH = ch.reduce(function(s, c) { return s + subtreeHeight(c); }, 0) + (ch.length - 1) * V_GAP;
+    let curY = y + (el.offsetHeight - totalH) / 2;
+    const childX = x + el.offsetWidth + H_GAP;
+    ch.forEach(function(c) {
+      const h = subtreeHeight(c);
+      positionSubtree(c, childX, curY + (h - c.offsetHeight) / 2);
+      curY += h + V_GAP;
+    });
+  }
+  positionSubtree(rootEl, parseFloat(rootEl.style.left) || 0, parseFloat(rootEl.style.top) || 0);
+  renderConnectors();
+}
+
+function updateMindBtn() {
+  const btn = $('reflow-btn');
+  if (!btn) return;
+  const hasMind = selectedObjects.some(function(o) { return o.classList.contains('mind-object'); });
+  btn.style.display = hasMind ? '' : 'none';
 }
 
 function updateCanvasTransform() {
@@ -1386,6 +1484,7 @@ function isViewOnly() {
 
 function buildStaticBodyHTML(state) {
   return [
+    '<div id="image-ctx-menu"><div id="img-ctx-copy">Copy image</div><div id="img-ctx-save">Save image as…</div></div>',
     '<div id="canvas-container">',
       '<div id="canvas-wrapper" style="transform: translate(' + state.panX + 'px, ' + state.panY + 'px) scale(' + state.scale + ');"></div>',
       '<div id="selection-box"></div>',
@@ -1416,12 +1515,13 @@ function saveCanvas() {
     'captureObject','captureState','restoreObject','applyState',
     'pushUndo','recordUndo','beginGesture','commitGesture','undo','redo',
     'addResizeHandles','revertHandleToOrigin',
+    'showImageMenu','hideImageMenu','copyImageToClipboard','saveImageAs',
     'createImageElement','createTextElement','createGroupElement',
     'createMindmapElement','addMindmapToCanvas','startEditingMind',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
     'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants',
-    'initDragInitials',
+    'reflowMindTree','updateMindBtn','initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
@@ -1886,6 +1986,19 @@ function setupEventListeners() {
 
   $('group-btn').addEventListener('click', () => { if (!isViewOnly()) groupObjects(); });
   $('ungroup-btn').addEventListener('click', () => { if (!isViewOnly()) ungroupObjects(); });
+  $('reflow-btn').addEventListener('click', function() {
+    if (isViewOnly()) return;
+    const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
+    if (!mindSel) return;
+    let root = mindSel;
+    while (root.dataset.parentId) {
+      const par = document.getElementById(root.dataset.parentId);
+      if (!par) break;
+      root = par;
+    }
+    recordUndo();
+    reflowMindTree(root);
+  });
   $('clear-btn').addEventListener('click', () => {
     if (isViewOnly()) return;
     if (getTopLevelObjects().length === 0) return;
@@ -1898,6 +2011,9 @@ function setupEventListeners() {
     }
   });
   $('save-btn').addEventListener('click', saveCanvas);
+  $('img-ctx-copy').addEventListener('click', function() { const src = $('image-ctx-menu')._src; hideImageMenu(); if (src) copyImageToClipboard(src); });
+  $('img-ctx-save').addEventListener('click', function() { const src = $('image-ctx-menu')._src; hideImageMenu(); if (src) saveImageAs(src); });
+  document.addEventListener('mousedown', function(e) { if (!e.target.closest('#image-ctx-menu')) hideImageMenu(); });
   $('undo-btn').addEventListener('click', () => { if (!isViewOnly()) undo(); });
   $('redo-btn').addEventListener('click', () => { if (!isViewOnly()) redo(); });
 
