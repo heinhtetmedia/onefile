@@ -31,7 +31,8 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 }
 
 #floating-sidebar {
-  position: fixed; left: 32px; top: 50%; transform: translateY(-50%);
+  position: fixed; left: 32px;
+  top: calc(48px + (100vh - 48px) / 2); transform: translateY(-50%);
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 8px 6px; border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
@@ -49,10 +50,10 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 #floating-sidebar button:active { transform: translateY(0); }
 
 #sidebar-overlay {
-  position: absolute; top: 48px; left: 0; width: 100%; height: calc(100% - 48px);
+  position: absolute; inset: 0;
   background-color: rgba(255,255,255,0.6); z-index: 10;
   display: none; pointer-events: none; opacity: 0; transition: opacity 0.2s;
-  border-radius: 0 0 16px 16px;
+  border-radius: 16px;
 }
 #floating-sidebar.view-only #sidebar-overlay { display: block; opacity: 1; }
 
@@ -78,19 +79,6 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 #floating-sidebar button.active:hover .toggle-track { fill: #1566d0; }
 
 .sidebar-divider { height: 1.2px; background: #e0e0e0; margin: 6px 0; }
-
-#zoom-controls {
-  position: fixed; bottom: 10px; right: 10px; z-index: 100;
-  background-color: rgba(255,255,255,0.9); padding: 6px;
-  border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-  display: flex; gap: 6px;
-}
-#zoom-controls button {
-  padding: 5px 8px; border: none; background-color: #1a1a1a;
-  color: white; border-radius: 3px; cursor: pointer; font-size: 12px;
-}
-#zoom-controls button:hover { background-color: #808080; }
-#zoom-percentage { margin: 0 8px; font-size: 12px; line-height: 24px; color: #333; }
 
 #file-input { display: none; }
 
@@ -216,13 +204,13 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 #text-dialog-buttons { display: none; }
 
 .keyboard-shortcuts {
-  position: fixed; left: 96px; top: 50%; transform: translateY(-50%);
+  position: fixed; left: 50%; top: 60px; transform: translateX(-50%);
   background-color: white; padding: 12px;
   border-radius: 8px; font-size: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-  display: none; max-width: 350px; z-index: 50;
-  border: 1px solid #e0e0e0;
-  max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  display: none; max-width: min(360px, calc(100vw - 24px)); width: max-content; z-index: 160;
+  border: 1px solid #e8eaed;
+  max-height: calc(100vh - 80px); overflow-y: auto;
 }
 .keyboard-shortcuts ul { list-style-type: none; margin: 5px 0 0 0; }
 .keyboard-shortcuts li { margin-bottom: 3px; }
@@ -252,21 +240,17 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 .credit a:hover { text-decoration: underline; color: #1877F2; }
 .credit .sep { color: #bbb; }
 
-#filename-bar {
-  position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
-  z-index: 100; display: flex; align-items: center; pointer-events: none;
-}
 #filename-display {
-  font-size: 13px; color: #bbb; cursor: pointer; padding: 3px 10px;
-  border-radius: 4px; border: 1px solid transparent; pointer-events: all;
-  white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis;
-  font-family: Calibri, sans-serif; transition: border-color 0.15s, color 0.15s;
+  font-size: 14px; font-weight: 500; color: #1a1a1a; cursor: pointer;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  font-family: Calibri, sans-serif; transition: background 0.15s, border-color 0.15s;
 }
-#filename-display:hover { border-color: #ddd; color: #888; }
+#filename-display:hover { background: #f1f3f4; border-color: #e8eaed; }
 #filename-input {
-  font-size: 13px; color: #333; padding: 3px 10px; border-radius: 4px;
-  border: 1px solid #1877F2; outline: none; background: white; pointer-events: all;
-  width: 200px; display: none; font-family: Calibri, sans-serif;
+  font-size: 14px; font-weight: 500; color: #1a1a1a; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #1877F2; outline: none; background: white;
+  width: min(280px, 60vw); display: none; font-family: Calibri, sans-serif;
   box-shadow: 0 0 0 3px rgba(24,119,242,0.15);
 }
 @media (hover: none) {
@@ -304,6 +288,27 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   display: flex; align-items: center; padding: 0 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
+.top-bar-logo {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; margin-right: 4px;
+}
+.top-bar-logo .icon { width: 22px; height: 22px; }
+.top-bar-filename-wrap {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
+  max-width: min(560px, 50vw); margin: 0 auto;
+}
+.top-bar-actions {
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+}
+.icon-btn {
+  width: 32px; height: 32px; padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: #5f6368; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: rgba(0,0,0,0.06); color: #202124; }
+.icon-btn.active { color: #1877F2; background: rgba(24,119,242,0.12); }
+.icon-btn .icon { width: 20px; height: 20px; fill: currentColor; }
 #bottom-nav {
   position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 100;
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -330,36 +335,45 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   <div id="canvas-wrapper"></div>
   <div id="selection-box"></div>
 </div>
+<header id="app-top-bar">
+  <div class="top-bar-logo" aria-hidden="true">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="#1877F2" d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+  </div>
+  <div class="top-bar-filename-wrap">
+    <span id="filename-display">onefile</span>
+    <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none" aria-label="Document name">
+  </div>
+  <div class="top-bar-actions">
+    <button type="button" id="view-only-btn" class="icon-btn tooltip" data-tooltip="Editing ON/OFF" aria-label="Toggle view-only">
+      <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+    </button>
+    <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Help & shortcuts" aria-label="Help and shortcuts">
+      <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
+    </button>
+  </div>
+</header>
+
 <div id="floating-sidebar">
-  <button id="view-only-btn" class="tooltip" data-tooltip="Editing ON/OFF">
-    <svg class="icon" viewBox="0 0 34 20" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="32" height="18" rx="9" class="toggle-track"></rect>
-      <circle cx="10" cy="10" r="7" class="toggle-knob"></circle>
-    </svg>
-  </button>
   <div id="sidebar-overlay"></div>
+  <button id="select-btn" class="tooltip" data-tooltip="Select (V)">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5.5 2.5l11 8.5-5.5 1-1 5.5-4.5-15z"/></svg>
+  </button>
+  <button id="add-text-btn" class="tooltip" data-tooltip="Add Text (T)">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>
+  </button>
+  <button id="add-mind-btn" class="tooltip" data-tooltip="Add Mindmap node (M)">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3h7zM7 9H4V5h3v4zm10 6h3v4h-3v-4zm0-10h3v4h-3V5z"/></svg>
+  </button>
   <button id="add-image-btn" class="tooltip" data-tooltip="Add Image (I)">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"></path></svg>
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"></path></svg>
   </button>
-  <button id="add-text-btn" class="tooltip" data-tooltip="Add Text (T or Double-Click on Canvas)">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z"></path></svg>
-  </button>
-  <div class="sidebar-divider"></div>
-  <button id="group-btn" class="tooltip" data-tooltip="Group (Ctrl+G)">
-    <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#333">
+  <button id="group-btn" class="tooltip" data-tooltip="Group / Ungroup (Ctrl+G)">
+    <svg class="icon" viewBox="0 -960 960 960" fill="currentColor">
       <path d="M400-80q-33 0-56.5-23.5T320-160v-160H160q-33 0-56.5-23.5T80-400v-400q0-33 23.5-56.5T160-880h400q33 0 56.5 23.5T640-800v160h160q33 0 56.5 23.5T880-560v400q0 33-23.5 56.5T800-80H400Zm0-80h400v-400H560v-240H160v400h240v240Zm80-320Z"></path>
     </svg>
   </button>
-  <button id="ungroup-btn" class="tooltip" data-tooltip="Ungroup (Ctrl+Alt+G)">
-    <svg class="icon" viewBox="0 0 25 25">
-      <rect x="1" y="1" width="10" height="10" fill="#edf1f4" stroke="#333" stroke-width="2"></rect>
-      <rect x="14" y="14" width="10" height="10" fill="#edf1f4" stroke="#333" stroke-width="2"></rect>
-      <path d="M11 6 L15 6 M14 18 L10 18" stroke="#333" stroke-width="1" stroke-linecap="round"></path>
-      <path d="M6 12 L6 15 M18 10 L18 14" stroke="#333" stroke-width="1" stroke-linecap="round"></path>
-    </svg>
-  </button>
   <button id="reflow-btn" class="tooltip" data-tooltip="Clean up mindmap layout" style="display:none">
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <rect x="2" y="9" width="6" height="5" rx="1.5"/>
       <rect x="16" y="4" width="6" height="4" rx="1.5"/>
       <rect x="16" y="11" width="6" height="4" rx="1.5"/>
@@ -369,39 +383,24 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
       <line x1="8" y1="11.5" x2="13" y2="20"/>
     </svg>
   </button>
-  <div class="sidebar-divider"></div>
-  <button id="undo-btn" class="tooltip" data-tooltip="Undo (Ctrl+Z)">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
-  </button>
-  <button id="redo-btn" class="tooltip" data-tooltip="Redo (Ctrl+Y)">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
-  </button>
-  <div class="sidebar-divider"></div>
-  <button id="clear-btn" class="tooltip" data-tooltip="Clear Canvas">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
-  </button>
-  <button id="save-btn" class="tooltip" data-tooltip="Save (Ctrl+S)">
-    <svg class="icon" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"></path></svg>
-  </button>
-  <div class="sidebar-divider"></div>
-  <button id="show-shortcuts-btn" class="tooltip" data-tooltip="Shortcuts">
-    <svg xmlns="http://www.w3.org/2000/svg" height="22" viewBox="0 0 24 24" width="22">
-      <path d="M0 0h24v24H0z" fill="none"></path>
-      <path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H4V7h16v10zM6 10h2v2H6zm3 0h2v2H9zm3 0h2v2h-2zm3 0h2v2h-2zM6 13h12v2H6z"></path>
-    </svg>
-  </button>
 </div>
-<div id="filename-bar">
-  <span id="filename-display">onefile</span>
-  <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none">
-</div>
+
 <input type="file" id="file-input" accept="image/*" multiple>
-<div id="zoom-controls">
-  <button id="fit-to-content-btn">Fit to Content (1)</button>
-  <button id="zoom-out-btn">−</button>
-  <span id="zoom-percentage">100%</span>
-  <button id="zoom-in-btn">+</button>
-</div>
+
+<nav id="bottom-nav">
+  <button type="button" id="save-btn" class="tooltip" data-tooltip="Save (Ctrl+S)" aria-label="Save">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+  </button>
+  <button type="button" id="fit-to-content-btn" class="tooltip" data-tooltip="Fit to content (1)" aria-label="Fit to content">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/></svg>
+  </button>
+  <button type="button" id="zoom-out-btn" class="tooltip" data-tooltip="Zoom out (-)" aria-label="Zoom out">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>
+  </button>
+  <button type="button" id="zoom-in-btn" class="tooltip" data-tooltip="Zoom in (+)" aria-label="Zoom in">
+    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+  </button>
+</nav>
 <div id="text-dialog">
   <textarea id="text-input" placeholder="Enter text (Shift+Enter for line breaks)" style="height: 45px;"></textarea>
   <div id="text-dialog-buttons">
@@ -1125,7 +1124,6 @@ function updateCanvasTransform() {
   } else {
     c.style.backgroundImage = 'none';
   }
-  $('zoom-percentage').textContent = Math.round(scale * 100) + '%';
   renderConnectors();
 }
 
@@ -1507,19 +1505,23 @@ function isViewOnly() {
 // ============ SAVE ============
 
 function buildStaticBodyHTML(state) {
+  const fname = escapeHTML(state.filename || 'onefile');
+  const topBar = $('app-top-bar').outerHTML
+    .replace(/(<span id="filename-display"[^>]*>)[^<]*(<\/span>)/, '$1' + fname + '$2')
+    .replace(/(<input id="filename-input"[^>]*value=")[^"]*(")/, '$1' + fname + '$2');
   return [
     '<div id="image-ctx-menu"><div id="img-ctx-copy">Copy image</div><div id="img-ctx-save">Save image as…</div></div>',
     '<div id="canvas-container">',
       '<div id="canvas-wrapper" style="transform: translate(' + state.panX + 'px, ' + state.panY + 'px) scale(' + state.scale + ');"></div>',
       '<div id="selection-box"></div>',
     '</div>',
+    topBar,
     $('floating-sidebar').outerHTML.replace(' class="view-only"', '').replace(/class="active"/g, 'class=""'),
     '<input type="file" id="file-input" accept="image/*" multiple>',
-    $('zoom-controls').outerHTML,
+    $('bottom-nav').outerHTML,
     '<div id="text-dialog" style="display: none;">' + $('text-dialog').innerHTML + '</div>',
     '<div class="keyboard-shortcuts" style="display: none;">' + document.querySelector('.keyboard-shortcuts').innerHTML + '</div>',
-    '<div class="credit">' + document.querySelector('.credit').innerHTML + '</div>',
-    '<div id="filename-bar"><span id="filename-display">' + escapeHTML(state.filename || 'onefile') + '</span><input id="filename-input" type="text" value="' + escapeHTML(state.filename || 'onefile') + '" spellcheck="false" style="display:none"></div>'
+    '<div class="credit">' + document.querySelector('.credit').innerHTML + '</div>'
   ].join('\n');
 }
 
@@ -1637,15 +1639,13 @@ function setupPlatformTooltips() {
   const alt = isMac ? '⌥' : 'Alt+';
   const set = (id, text) => { const el = $(id); if (el) el.setAttribute('data-tooltip', text); };
   set('view-only-btn',     'Editing ON/OFF');
-  set('undo-btn',          'Undo (' + mod + 'Z)');
-  set('redo-btn',          'Redo (' + mod + 'Y)');
-  set('add-image-btn',     'Add Image (I)');
+  set('select-btn',        'Select (V)');
   set('add-text-btn',      'Add Text (T or Double-Click)');
-  set('group-btn',         'Group (' + mod + 'G)');
-  set('ungroup-btn',       'Ungroup (' + mod + alt + 'G)');
-  set('clear-btn',         'Clear Canvas');
+  set('add-mind-btn',      'Add Mindmap node (M)');
+  set('add-image-btn',     'Add Image (I)');
+  set('group-btn',         'Group / Ungroup (' + mod + 'G)');
   set('save-btn',          'Save (' + mod + 'S)');
-  set('show-shortcuts-btn','Shortcuts');
+  set('show-shortcuts-btn','Help & shortcuts');
 }
 
 function buildShortcutsPanel() {
@@ -1859,7 +1859,7 @@ function setupTouchSupport() {
     }
     lastTapTime = now; lastTapTarget = e.target;
     const el = document.elementFromPoint(t.clientX, t.clientY);
-    if (!el || el.closest('#floating-sidebar') || el.closest('#zoom-controls') || el.closest('#filename-bar')) return;
+    if (!el || el.closest('#floating-sidebar') || el.closest('#bottom-nav') || el.closest('#app-top-bar')) return;
     const handle = el.closest('.resize-handle');
     let obj = el.closest('.canvas-object');
     while (obj && obj.parentElement && obj.parentElement.classList.contains('group-object')) obj = obj.parentElement;
@@ -2009,7 +2009,6 @@ function setupEventListeners() {
   });
 
   $('group-btn').addEventListener('click', () => { if (!isViewOnly()) groupObjects(); });
-  $('ungroup-btn').addEventListener('click', () => { if (!isViewOnly()) ungroupObjects(); });
   $('reflow-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
     const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
@@ -2023,23 +2022,10 @@ function setupEventListeners() {
     recordUndo();
     reflowMindTree(root);
   });
-  $('clear-btn').addEventListener('click', () => {
-    if (isViewOnly()) return;
-    if (getTopLevelObjects().length === 0) return;
-    if (confirm('Are you sure you want to clear the canvas?')) {
-      recordUndo();
-      $('canvas-wrapper').innerHTML = '';
-      selectedObjects = [];
-      connectors = [];
-      renderConnectors();
-    }
-  });
   $('save-btn').addEventListener('click', saveCanvas);
   $('img-ctx-copy').addEventListener('click', function() { const src = $('image-ctx-menu')._src; hideImageMenu(); if (src) copyImageToClipboard(src); });
   $('img-ctx-save').addEventListener('click', function() { const src = $('image-ctx-menu')._src; hideImageMenu(); if (src) saveImageAs(src); });
   document.addEventListener('mousedown', function(e) { if (!e.target.closest('#image-ctx-menu')) hideImageMenu(); });
-  $('undo-btn').addEventListener('click', () => { if (!isViewOnly()) undo(); });
-  $('redo-btn').addEventListener('click', () => { if (!isViewOnly()) redo(); });
 
   $('zoom-in-btn').addEventListener('click', () => zoomCentered(1.2));
   $('zoom-out-btn').addEventListener('click', () => zoomCentered(1 / 1.2));
@@ -2086,7 +2072,7 @@ function setupEventListeners() {
 
   container.addEventListener('mousedown', function(e) {
     if (isEditing) return;
-    if (e.target.closest('#text-dialog') || e.target.closest('#zoom-controls') || e.target.closest('#floating-sidebar') || e.target.closest('.keyboard-shortcuts')) return;
+    if (e.target.closest('#text-dialog') || e.target.closest('#bottom-nav') || e.target.closest('#app-top-bar') || e.target.closest('#floating-sidebar') || e.target.closest('.keyboard-shortcuts')) return;
 
     if (isSpaceHeld || e.button === 1) {
       e.preventDefault();
