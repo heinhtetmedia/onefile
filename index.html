@@ -10,12 +10,12 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body, html { width: 100%; height: 100%; overflow: hidden; font-family: Calibri, sans-serif; }
-body { background-color: #f0f4f8; } /* Updated to match image style */
+body { background-color: #f8f9fb; }
 
 #canvas-container {
   width: 100%; height: 100%; min-height: 100vh;
-  background-color: #f0f4f8; /* Light blue-grey background */
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px); /* Subtle dot style */
+  background-color: #f8f9fb;
+  background-image: radial-gradient(circle, #c8cdd6 0.5px, transparent 0.5px);
   background-size: 15px 15px;
   position: relative; overflow: hidden;
 }
@@ -81,6 +81,8 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 .sidebar-divider { height: 1.2px; background: #e0e0e0; margin: 6px 0; }
 #floating-sidebar button.active { background: rgba(24,119,242,0.08); color: #1877F2; }
 #floating-sidebar button.active:hover { background: rgba(24,119,242,0.14); }
+/* Keep toggle always on top of the view-only overlay */
+#view-only-btn { position: relative; z-index: 20; }
 
 #file-input { display: none; }
 
@@ -124,19 +126,18 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
   background-color: transparent; color: #000000;
   border-radius: 4px; height: auto !important;
   resize: none; overflow: visible;
-  font-weight: 500;
+  font-weight: 500; width: max-content; max-width: 320px;
   -webkit-text-stroke: 0.35px;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
-.text-object.selected { background-color: #ffffff; }
 .text-content {
   width: 100%; height: 100%; padding: 0;
   white-space: pre-wrap; overflow: auto; box-sizing: border-box;
+  word-break: break-word;
 }
 .text-edit-mode {
   outline: none; cursor: text;
-  background-color: rgba(255,255,255,0.95) !important;
   box-shadow: 0 0 0 2px #1877F2 !important;
 }
 .text-edit-mode .text-content { outline: none; }
@@ -306,18 +307,29 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 #bottom-nav {
   position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 100;
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-radius: 9999px; padding: 6px 10px;
+  border-radius: 16px; padding: 6px 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   border: 1px solid rgba(255,255,255,0.6);
   display: flex; align-items: center; gap: 2px;
 }
 #bottom-nav button {
-  width: 36px; height: 36px; border: none; border-radius: 9999px;
+  width: 36px; height: 36px; border: none; border-radius: 8px;
   background: transparent; color: #5f6368; cursor: pointer;
   display: flex; align-items: center; justify-content: center; padding: 0;
   transition: background 0.15s;
 }
 #bottom-nav button:hover { background: rgba(0,0,0,0.06); }
+
+#reflow-float-btn {
+  position: fixed; z-index: 110;
+  width: 36px; height: 36px; border: none; border-radius: 8px;
+  background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.08);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #333; padding: 0;
+  transition: background 0.15s;
+}
+#reflow-float-btn:hover { background: #e9e9e9; }
 </style>
 </head>
 <body>
@@ -338,9 +350,6 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
     <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none" aria-label="Document name">
   </div>
   <div class="top-bar-actions">
-    <button type="button" id="view-only-btn" class="icon-btn tooltip" data-tooltip="Editing ON/OFF" aria-label="Toggle view-only">
-      <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-    </button>
     <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Help & shortcuts" aria-label="Help and shortcuts">
       <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
     </button>
@@ -349,9 +358,13 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
 
 <div id="floating-sidebar">
   <div id="sidebar-overlay"></div>
-  <button id="select-btn" class="tooltip" data-tooltip="Select (V)">
-    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg>
+  <button id="view-only-btn" class="tooltip" data-tooltip="Editing ON/OFF" aria-label="Toggle editing">
+    <svg viewBox="0 0 28 16" style="width:28px;height:16px;overflow:visible;display:block">
+      <rect class="toggle-track" x="0" y="0" width="28" height="16" rx="8"/>
+      <circle class="toggle-knob" cx="8" cy="8" r="5.5"/>
+    </svg>
   </button>
+  <div class="sidebar-divider"></div>
   <button id="add-text-btn" class="tooltip" data-tooltip="Add Text (T)">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>
   </button>
@@ -359,23 +372,23 @@ body { background-color: #f0f4f8; } /* Updated to match image style */
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3h7zM7 9H4V5h3v4zm10 6h3v4h-3v-4zm0-10h3v4h-3V5z"/></svg>
   </button>
   <button id="add-image-btn" class="tooltip" data-tooltip="Add Image (I)">
-    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    <svg class="icon" viewBox="0 -960 960 960"><path fill="currentColor" d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"/></svg>
   </button>
   <button id="group-btn" class="tooltip" data-tooltip="Group / Ungroup (Ctrl+G)">
-    <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM8 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM9.5 8c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5S9.5 9.38 9.5 8zm6.5 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-  </button>
-  <button id="reflow-btn" class="tooltip" data-tooltip="Clean up mindmap layout" style="display:none">
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <rect x="2" y="9" width="6" height="5" rx="1.5"/>
-      <rect x="16" y="4" width="6" height="4" rx="1.5"/>
-      <rect x="16" y="11" width="6" height="4" rx="1.5"/>
-      <rect x="16" y="18" width="6" height="4" rx="1.5"/>
-      <line x1="8" y1="11.5" x2="13" y2="6"/>
-      <line x1="8" y1="11.5" x2="13" y2="13"/>
-      <line x1="8" y1="11.5" x2="13" y2="20"/>
-    </svg>
+    <svg class="icon" viewBox="0 -960 960 960"><path fill="currentColor" d="M400-80q-33 0-56.5-23.5T320-160v-160H160q-33 0-56.5-23.5T80-400v-400q0-33 23.5-56.5T160-880h400q33 0 56.5 23.5T640-800v160h160q33 0 56.5 23.5T880-560v400q0 33-23.5 56.5T800-80H400Zm0-80h400v-400H560v-240H160v400h240v240Zm80-320Z"/></svg>
   </button>
 </div>
+<button id="reflow-float-btn" style="display:none" class="tooltip" data-tooltip="Clean up mindmap layout" aria-label="Reflow mindmap">
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <rect x="2" y="9" width="6" height="5" rx="1.5"/>
+    <rect x="16" y="4" width="6" height="4" rx="1.5"/>
+    <rect x="16" y="11" width="6" height="4" rx="1.5"/>
+    <rect x="16" y="18" width="6" height="4" rx="1.5"/>
+    <line x1="8" y1="11.5" x2="13" y2="6"/>
+    <line x1="8" y1="11.5" x2="13" y2="13"/>
+    <line x1="8" y1="11.5" x2="13" y2="20"/>
+  </svg>
+</button>
 
 <input type="file" id="file-input" accept="image/*" multiple>
 
@@ -896,7 +909,7 @@ function addTextToCanvas(textHTML, left, top, width, height, id, parent) {
   const cy = (window.innerHeight / 2 - panY) / scale;
   wrap.style.left = (left !== undefined ? left : cx - 150) + 'px';
   wrap.style.top  = (top  !== undefined ? top  : cy - 20)  + 'px';
-  wrap.style.width = (width || 300) + 'px';
+  if (width) wrap.style.width = width + 'px';
   if (height) wrap.style.height = height + 'px';
   parent.appendChild(wrap);
   wrap._origRect = {
@@ -1091,10 +1104,14 @@ function reflowMindTree(rootEl) {
 }
 
 function updateMindBtn() {
-  const btn = $('reflow-btn');
+  const btn = $('reflow-float-btn');
   if (!btn) return;
-  const hasMind = selectedObjects.some(function(o) { return o.classList.contains('mind-object'); });
-  btn.style.display = hasMind ? '' : 'none';
+  const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
+  if (!mindSel) { btn.style.display = 'none'; return; }
+  const r = mindSel.getBoundingClientRect();
+  btn.style.display = 'flex';
+  btn.style.left = Math.round(r.left + r.width / 2 - 18) + 'px';
+  btn.style.top  = Math.round(r.top - 46) + 'px';
 }
 
 function updateCanvasTransform() {
@@ -1105,12 +1122,13 @@ function updateCanvasTransform() {
   if (scale >= 1) {
     c.style.backgroundSize = gridSize + 'px ' + gridSize + 'px';
     c.style.backgroundPosition = (panX % gridSize) + 'px ' + (panY % gridSize) + 'px';
-    // Subtle dots #cbd5e1 to match image[cite: 2]
-    c.style.backgroundImage = 'radial-gradient(circle, #cbd5e1 ' + Math.max(1, scale) + 'px, transparent ' + (Math.max(1, scale) + 0.5) + 'px)';
+    const dotR = Math.max(0.5, scale * 0.5);
+    c.style.backgroundImage = 'radial-gradient(circle, #c8cdd6 ' + dotR + 'px, transparent ' + (dotR + 0.5) + 'px)';
   } else {
     c.style.backgroundImage = 'none';
   }
   renderConnectors();
+  updateMindBtn();
 }
 
 function centerCanvas() {
@@ -1503,6 +1521,7 @@ function buildStaticBodyHTML(state) {
     '</div>',
     topBar,
     $('floating-sidebar').outerHTML.replace(' class="view-only"', '').replace(/class="active"/g, 'class=""'),
+    '<button id="reflow-float-btn" style="display:none" class="tooltip" data-tooltip="Clean up mindmap layout" aria-label="Reflow mindmap">' + $('reflow-float-btn').innerHTML + '</button>',
     '<input type="file" id="file-input" accept="image/*" multiple>',
     $('bottom-nav').outerHTML,
     '<div id="text-dialog" style="display: none;">' + $('text-dialog').innerHTML + '</div>',
@@ -1624,7 +1643,6 @@ function setupPlatformTooltips() {
   const alt = isMac ? '⌥' : 'Alt+';
   const set = (id, text) => { const el = $(id); if (el) el.setAttribute('data-tooltip', text); };
   set('view-only-btn',     'Editing ON/OFF');
-  set('select-btn',        'Select (V)');
   set('add-text-btn',      'Add Text (T or Double-Click)');
   set('add-mind-btn',      'Add Mindmap node (M)');
   set('add-image-btn',     'Add Image (I)');
@@ -2005,7 +2023,6 @@ function setupEventListeners() {
     inp.style.height = inp.scrollHeight + 'px';
   });
 
-  $('select-btn').addEventListener('click', () => { /* always in select mode — visual only */ });
 
   $('add-mind-btn').addEventListener('click', () => {
     if (isViewOnly()) return;
@@ -2022,7 +2039,7 @@ function setupEventListeners() {
       groupObjects();
     }
   });
-  $('reflow-btn').addEventListener('click', function() {
+  $('reflow-float-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
     const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
     if (!mindSel) return;
@@ -2436,8 +2453,6 @@ function init() {
   buildShortcutsPanel();
   setupFilenameBar();
   setupTouchSupport();
-  const selBtn = $('select-btn');
-  if (selBtn) selBtn.classList.add('active');
   try { document.execCommand('defaultParagraphSeparator', false, 'br'); } catch (_) {}
 }
 
