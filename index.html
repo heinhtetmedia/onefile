@@ -172,21 +172,20 @@ body { background-color: #f8f9fb; }
   background: #f5f1ea;
   border-radius: 20px;
   padding: 8px 20px;
-  min-width: 120px;
-  max-width: 240px;
+  min-width: 80px;
+  max-width: 280px;
   width: max-content;
   color: #2c2c2c;
   font-size: 15px;
   font-weight: 500;
   box-shadow: 0 1px 4px rgba(0,0,0,0.13);
   white-space: normal;
+  word-break: break-word;
   line-height: 1.45;
   height: auto !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
 }
-.mind-label { outline: none; min-width: 20px; display: inline-block; text-align: center; }
+.mind-label { outline: none; min-width: 20px; display: block; text-align: left; }
 .mind-edit-mode { box-shadow: 0 0 0 2px #1877F2, 0 1px 4px rgba(0,0,0,0.13) !important; cursor: text; }
 
 .image-object img { display: block; }
@@ -322,17 +321,17 @@ body { background-color: #f8f9fb; }
 .wordmark-default {
   display: block;
   text-transform: uppercase; letter-spacing: 0.15em;
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition: opacity 0.2s ease;
 }
 .wordmark-hover {
   position: absolute; top: 0; left: 0; white-space: nowrap;
   font-weight: 500; letter-spacing: 0.02em; text-transform: none;
-  opacity: 0; transform: translateY(6px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
   pointer-events: none;
 }
-.top-bar-logo:hover .wordmark-default { opacity: 0; transform: translateY(-6px); }
-.top-bar-logo:hover .wordmark-hover   { opacity: 1; transform: translateY(0); }
+.top-bar-logo:hover .wordmark-default { opacity: 0; }
+.top-bar-logo:hover .wordmark-hover   { opacity: 1; }
 .top-bar-filename-wrap {
   flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
   max-width: min(560px, 50vw); margin: 0 auto;
@@ -2306,6 +2305,36 @@ function setupEventListeners() {
       return;
     }
     if (isEditing) return;
+
+    // Mindmap keyboard when node is selected but not editing
+    const selectedMind = selectedObjects.length === 1 && selectedObjects[0].classList.contains('mind-object') ? selectedObjects[0] : null;
+    if (selectedMind && !mod) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        startEditingMind(selectedMind);
+        return;
+      }
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        recordUndo();
+        const child = addMindmapToCanvas('', parseFloat(selectedMind.style.left) + selectedMind.offsetWidth + 60, parseFloat(selectedMind.style.top) + Math.round((selectedMind.offsetHeight - 38) / 2), undefined, selectedMind.id);
+        renderConnectors();
+        setTimeout(function() { startEditingMind(child); }, 0);
+        return;
+      }
+      if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+        const pid = selectedMind.dataset.parentId;
+        if (pid) {
+          const par = document.getElementById(pid);
+          if (par && par.dataset.parentId) { selectedMind.dataset.parentId = par.dataset.parentId; }
+          else { delete selectedMind.dataset.parentId; }
+          renderConnectors();
+        }
+        return;
+      }
+    }
+
     if (e.key === 'Tab') { e.preventDefault(); return; }
 
     const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -2406,16 +2435,14 @@ function setupEventListeners() {
       getTopLevelObjects().forEach(o => selectObject(o, true));
       return;
     }
-    if (mod && !e.altKey && e.code === 'KeyG') {
+    if (mod && e.code === 'KeyG') {
       if (isViewOnly()) return;
       e.preventDefault();
-      groupObjects();
-      return;
-    }
-    if (mod && e.altKey && e.code === 'KeyG') {
-      if (isViewOnly()) return;
-      e.preventDefault();
-      ungroupObjects();
+      if (selectedObjects.length === 1 && selectedObjects[0].classList.contains('group-object')) {
+        ungroupObjects();
+      } else {
+        groupObjects();
+      }
       return;
     }
   });
