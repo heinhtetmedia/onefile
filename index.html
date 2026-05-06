@@ -311,13 +311,28 @@ body { background-color: #f8f9fb; }
 }
 .top-bar-logo {
   flex-shrink: 0; display: flex; align-items: center; margin-right: 8px;
+  cursor: default;
 }
 .top-bar-wordmark {
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.18em;
+  position: relative; display: inline-block;
+  font-size: 13px; font-weight: 600;
   color: #b8c0cc; font-family: Calibri, sans-serif;
-  user-select: none;
+  user-select: none; height: 1.2em; overflow: visible;
 }
+.wordmark-default {
+  display: block;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.wordmark-hover {
+  position: absolute; top: 0; left: 0; white-space: nowrap;
+  font-weight: 500; letter-spacing: 0.02em; text-transform: none;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+.top-bar-logo:hover .wordmark-default { opacity: 0; transform: translateY(-6px); }
+.top-bar-logo:hover .wordmark-hover   { opacity: 1; transform: translateY(0); }
 .top-bar-filename-wrap {
   flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
   max-width: min(560px, 50vw); margin: 0 auto;
@@ -373,11 +388,14 @@ body { background-color: #f8f9fb; }
 </div>
 <header id="app-top-bar">
   <div class="top-bar-logo">
-    <span class="top-bar-wordmark">Onefile</span>
+    <span class="top-bar-wordmark">
+      <span class="wordmark-default">Onefile</span>
+      <span class="wordmark-hover">A Whole Whiteboard</span>
+    </span>
   </div>
   <div class="top-bar-filename-wrap">
-    <span id="filename-display" class="tooltip" data-tooltip="Click to rename">onefile</span>
-    <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none" aria-label="Document name">
+    <span id="filename-display" class="tooltip" data-tooltip="Click to rename">Untitled OneFile</span>
+    <input id="filename-input" type="text" value="Untitled OneFile" spellcheck="false" style="display:none" aria-label="Document name">
   </div>
   <div class="top-bar-actions">
     <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Keyboard shortcuts" aria-label="Keyboard shortcuts">
@@ -492,7 +510,7 @@ let selectionStartX, selectionStartY;
 let undoStack = [], redoStack = [];
 let pendingSnapshot = null;
 let dirty = false;
-let currentFilename = 'onefile';
+let currentFilename = 'Untitled OneFile';
 let connectors = [];
 
 function $(id) { return document.getElementById(id); }
@@ -1678,7 +1696,7 @@ function setupPlatformTooltips() {
   set('add-image-btn',     'Add Image (I)');
   set('group-btn',         'Group / Ungroup (' + mod + 'G)');
   set('save-btn',          'Save (' + mod + 'S)');
-  set('show-shortcuts-btn','Help & shortcuts');
+  set('show-shortcuts-btn','Keyboard shortcuts');
 }
 
 function buildShortcutsPanel() {
@@ -1720,7 +1738,7 @@ function buildShortcutsPanel() {
     div.id = 'shortcuts-credits';
     div.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #eee;font-size:11px;color:#999;line-height:1.6;';
     div.innerHTML =
-      'Built by <a href="https://heinhtet.com.mm" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">Hein Htet</a>' +
+      'Built by <a href="https://www.linkedin.com/in/heinhtetthemarketer/" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">Hein Htet</a>' +
       ' &nbsp;·&nbsp; ' +
       '<a href="' + REPO_URL + '" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">GitHub</a>' +
       ' &nbsp;·&nbsp; ' +
@@ -2200,7 +2218,7 @@ function setupEventListeners() {
     } else if (target) {
       e.preventDefault();
       isDragging = true;
-      if (e.ctrlKey || e.metaKey) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
         selectObject(target, true);
       } else if (!selectedObjects.includes(target)) {
         clearSelection();
@@ -2272,7 +2290,8 @@ function setupEventListeners() {
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.code === 'Space' && !isSpaceHeld && document.activeElement.tagName !== 'TEXTAREA' && !isEditing && dlg.style.display !== 'block') {
+    if (document.activeElement === $('filename-input')) return;
+    if (e.code === 'Space' && !isSpaceHeld && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT' && !isEditing && dlg.style.display !== 'block') {
       isSpaceHeld = true;
       container.classList.add('space-pan');
       e.preventDefault();
