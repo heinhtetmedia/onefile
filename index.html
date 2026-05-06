@@ -6,7 +6,7 @@
 <title>Onefile</title>
 <meta name="description" content="One file. A whole whiteboard.">
 <!-- Onefile — created by Hein Htet (heinhtet.com.mm) — MIT licensed — github.com/heinhtetmedia/onefile -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%231877F2' d='M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='12' fill='white'/><path fill='%23475569' d='M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z'/></svg>">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body, html { width: 100%; height: 100%; overflow: hidden; font-family: Calibri, sans-serif; }
@@ -31,7 +31,7 @@ body { background-color: #f8f9fb; }
 }
 
 #floating-sidebar {
-  position: fixed; left: 32px;
+  position: fixed; left: 16px;
   top: calc(48px + (100vh - 48px) / 2); transform: translateY(-50%);
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 8px 6px; border-radius: 16px;
@@ -349,7 +349,7 @@ body { background-color: #f8f9fb; }
 .icon-btn.active { color: #1877F2; background: rgba(24,119,242,0.12); }
 .icon-btn .icon { width: 20px; height: 20px; fill: currentColor; }
 #bottom-nav {
-  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 100;
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-radius: 16px; padding: 6px 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
@@ -363,6 +363,7 @@ body { background-color: #f8f9fb; }
   transition: background 0.15s, color 0.15s;
 }
 #bottom-nav button:hover { background: #f1f5f9; color: #475569; }
+.nav-divider { width: 1px; height: 18px; background: rgba(0,0,0,0.12); margin: 0 4px; flex-shrink: 0; }
 
 #reflow-float-btn {
   position: fixed; z-index: 110;
@@ -443,6 +444,7 @@ body { background-color: #f8f9fb; }
   <button type="button" id="save-btn" class="tooltip" data-tooltip="Save (Ctrl+S)" aria-label="Save">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
   </button>
+  <div class="nav-divider"></div>
   <button type="button" id="fit-to-content-btn" class="tooltip" data-tooltip="Fit to content (1)" aria-label="Fit to content">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
   </button>
@@ -1392,6 +1394,7 @@ function cutSelection() {
   toRemove.forEach(function(o) { o.remove(); });
   selectedObjects = [];
   renderConnectors();
+  updateMindBtn();
 }
 
 function reIdRecursive(s) {
