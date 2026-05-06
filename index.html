@@ -84,6 +84,18 @@ body { background-color: #f8f9fb; }
   transform: translateX(-50%);
   margin-left: 0;
 }
+/* Help button: tooltip appears to the left (button is at far right edge) */
+#show-shortcuts-btn.tooltip:hover::after {
+  left: auto; right: calc(100% + 8px); top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0;
+}
+/* Filename tooltip appears below */
+#filename-display.tooltip:hover::after {
+  left: 50%; top: calc(100% + 6px);
+  transform: translateX(-50%);
+  margin-left: 0;
+}
 
 .toggle-track { fill: #e0e0e0; stroke: none; transition: fill 0.2s; }
 .toggle-knob { fill: #333; transition: transform 0.2s; transform: translateX(0); }
@@ -250,14 +262,14 @@ body { background-color: #f8f9fb; }
 
 
 #filename-display {
-  font-size: 14px; font-weight: 500; color: #1a1a1a; cursor: pointer;
+  font-size: 16px; font-weight: 500; color: #4a5568; cursor: pointer;
   padding: 4px 10px; border-radius: 6px; border: 1px solid transparent;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   font-family: Calibri, sans-serif; transition: background 0.15s, border-color 0.15s;
 }
 #filename-display:hover { background: #f1f3f4; border-color: #e8eaed; }
 #filename-input {
-  font-size: 14px; font-weight: 500; color: #1a1a1a; padding: 4px 10px; border-radius: 6px;
+  font-size: 16px; font-weight: 500; color: #4a5568; padding: 4px 10px; border-radius: 6px;
   border: 1px solid #1877F2; outline: none; background: white;
   width: min(280px, 60vw); display: none; font-family: Calibri, sans-serif;
   box-shadow: 0 0 0 3px rgba(24,119,242,0.15);
@@ -364,11 +376,11 @@ body { background-color: #f8f9fb; }
     <span class="top-bar-wordmark">Onefile</span>
   </div>
   <div class="top-bar-filename-wrap">
-    <span id="filename-display">onefile</span>
+    <span id="filename-display" class="tooltip" data-tooltip="Click to rename">onefile</span>
     <input id="filename-input" type="text" value="onefile" spellcheck="false" style="display:none" aria-label="Document name">
   </div>
   <div class="top-bar-actions">
-    <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Help & shortcuts" aria-label="Help and shortcuts">
+    <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Keyboard shortcuts" aria-label="Keyboard shortcuts">
       <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
     </button>
   </div>
