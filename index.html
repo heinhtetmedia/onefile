@@ -325,7 +325,7 @@ body { background-color: #f8f9fb; }
 }
 .wordmark-hover {
   position: absolute; top: 0; left: 0; white-space: nowrap;
-  font-weight: 500; letter-spacing: 0.02em; text-transform: none;
+  text-transform: uppercase; letter-spacing: 0.15em;
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -1154,7 +1154,7 @@ function updateMindBtn() {
   const btn = $('reflow-float-btn');
   if (!btn) return;
   const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-  if (!mindSel) { btn.style.display = 'none'; return; }
+  if (!mindSel || isEditing) { btn.style.display = 'none'; return; }
   const r = mindSel.getBoundingClientRect();
   btn.style.display = 'flex';
   btn.style.left = Math.round(r.right + 8) + 'px';
@@ -1367,22 +1367,29 @@ function ungroupObjects() {
 
 function copySelection() {
   if (selectedObjects.length === 0) return;
-  internalClipboard = selectedObjects.map(captureObject);
+  const toCapture = new Set(selectedObjects);
+  selectedObjects.forEach(function(o) {
+    if (o.classList.contains('mind-object')) getMindDescendants(o).forEach(function(d) { toCapture.add(d); });
+  });
+  internalClipboard = Array.from(toCapture).map(captureObject);
 }
 
 function cutSelection() {
   if (selectedObjects.length === 0) return;
   recordUndo();
-  internalClipboard = selectedObjects.map(captureObject);
-  selectedObjects.forEach(o => o.remove());
+  const toRemove = new Set(selectedObjects);
+  selectedObjects.forEach(function(o) {
+    if (o.classList.contains('mind-object')) getMindDescendants(o).forEach(function(d) { toRemove.add(d); });
+  });
+  internalClipboard = Array.from(toRemove).map(captureObject);
+  toRemove.forEach(function(o) { o.remove(); });
   selectedObjects = [];
+  renderConnectors();
 }
 
 function reIdRecursive(s) {
   s.id = generateId();
-  if (s.type === 'group') {
-    (s.children || []).forEach(reIdRecursive);
-  }
+  if (s.type === 'group') (s.children || []).forEach(reIdRecursive);
 }
 
 function pasteFromClipboard() {
@@ -1390,27 +1397,32 @@ function pasteFromClipboard() {
   recordUndo();
   clearSelection();
   const wrapper = $('canvas-wrapper');
+  // Build old→new ID map for mindmap nodes so parentId refs stay intact
+  const idMap = {};
+  internalClipboard.forEach(function(item) {
+    if (item.type === 'mindmap') idMap[item.id] = generateId();
+  });
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   internalClipboard.forEach(item => {
-    minX = Math.min(minX, item.left);
-    minY = Math.min(minY, item.top);
-    maxX = Math.max(maxX, item.left + item.width);
-    maxY = Math.max(maxY, item.top + item.height);
+    minX = Math.min(minX, item.left); minY = Math.min(minY, item.top);
+    maxX = Math.max(maxX, item.left + item.width); maxY = Math.max(maxY, item.top + item.height);
   });
-  const cbCx = (minX + maxX) / 2;
-  const cbCy = (minY + maxY) / 2;
-  const visCx = (window.innerWidth / 2 - panX) / scale;
-  const visCy = (window.innerHeight / 2 - panY) / scale;
-  const dx = visCx - cbCx;
-  const dy = visCy - cbCy;
+  const dx = (window.innerWidth / 2 - panX) / scale - (minX + maxX) / 2;
+  const dy = (window.innerHeight / 2 - panY) / scale - (minY + maxY) / 2;
   internalClipboard.forEach(item => {
     const copy = JSON.parse(JSON.stringify(item));
-    reIdRecursive(copy);
-    copy.left += dx;
-    copy.top  += dy;
+    if (copy.type === 'mindmap') {
+      copy.id = idMap[copy.id];
+      if (copy.parentId) copy.parentId = idMap[copy.parentId] || undefined;
+      if (!copy.parentId) delete copy.parentId;
+    } else {
+      reIdRecursive(copy);
+    }
+    copy.left += dx; copy.top += dy;
     const el = restoreObject(copy, wrapper);
-    selectObject(el, true);
+    if (!copy.parentId) selectObject(el, true); // only select root nodes
   });
+  renderConnectors();
   return true;
 }
 
@@ -2306,15 +2318,13 @@ function setupEventListeners() {
     }
     if (isEditing) return;
 
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+
     // Mindmap keyboard when node is selected but not editing
-    const selectedMind = selectedObjects.length === 1 && selectedObjects[0].classList.contains('mind-object') ? selectedObjects[0] : null;
-    if (selectedMind && !mod) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        startEditingMind(selectedMind);
-        return;
-      }
-      if (e.key === 'Tab' && !e.shiftKey) {
+    const selectedMind = !mod && selectedObjects.length === 1 && selectedObjects[0].classList.contains('mind-object') ? selectedObjects[0] : null;
+    if (selectedMind) {
+      if (e.key === 'Tab') {
         e.preventDefault();
         recordUndo();
         const child = addMindmapToCanvas('', parseFloat(selectedMind.style.left) + selectedMind.offsetWidth + 60, parseFloat(selectedMind.style.top) + Math.round((selectedMind.offsetHeight - 38) / 2), undefined, selectedMind.id);
@@ -2322,23 +2332,18 @@ function setupEventListeners() {
         setTimeout(function() { startEditingMind(child); }, 0);
         return;
       }
-      if (e.key === 'Tab' && e.shiftKey) {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const pid = selectedMind.dataset.parentId;
-        if (pid) {
-          const par = document.getElementById(pid);
-          if (par && par.dataset.parentId) { selectedMind.dataset.parentId = par.dataset.parentId; }
-          else { delete selectedMind.dataset.parentId; }
-          renderConnectors();
-        }
+        const pid = selectedMind.dataset.parentId || undefined;
+        recordUndo();
+        const sib = addMindmapToCanvas('', parseFloat(selectedMind.style.left), parseFloat(selectedMind.style.top) + selectedMind.offsetHeight + 16, undefined, pid);
+        renderConnectors();
+        setTimeout(function() { startEditingMind(sib); }, 0);
         return;
       }
     }
 
     if (e.key === 'Tab') { e.preventDefault(); return; }
-
-    const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
-    const mod = isMac ? e.metaKey : e.ctrlKey;
 
     if (e.code === 'KeyT' && !mod && !e.altKey) {
       if (isViewOnly()) return;
