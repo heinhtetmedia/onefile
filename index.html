@@ -397,7 +397,7 @@ body { background-color: #f8f9fb; }
     <input id="filename-input" type="text" value="Untitled OneFile" spellcheck="false" style="display:none" aria-label="Document name">
   </div>
   <div class="top-bar-actions">
-    <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Keyboard shortcuts" aria-label="Keyboard shortcuts">
+    <button type="button" id="show-shortcuts-btn" class="icon-btn tooltip" data-tooltip="Shortcuts" aria-label="Keyboard shortcuts">
       <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>
     </button>
   </div>
@@ -405,7 +405,7 @@ body { background-color: #f8f9fb; }
 
 <div id="floating-sidebar">
   <div id="sidebar-overlay"></div>
-  <button id="view-only-btn" class="tooltip" data-tooltip="Editing ON/OFF" aria-label="Toggle editing">
+  <button id="view-only-btn" class="tooltip" data-tooltip="Lock ON/OFF" aria-label="Toggle editing">
     <svg viewBox="0 0 28 16" style="width:28px;height:16px;overflow:visible;display:block">
       <rect class="toggle-track" x="0" y="0" width="28" height="16" rx="8"/>
       <circle class="toggle-knob" cx="8" cy="8" r="5.5"/>
@@ -578,7 +578,7 @@ function restoreObject(state, parent) {
   }
   el.style.left = (state.left || 0) + 'px';
   el.style.top = (state.top || 0) + 'px';
-  if (state.width)  el.style.width  = state.width + 'px';
+  if (state.width && state.type !== 'mindmap') el.style.width = state.width + 'px';
   if (state.height) el.style.height = state.height + 'px';
   parent.appendChild(el);
   if (state.origRect) {
@@ -1708,13 +1708,13 @@ function setupPlatformTooltips() {
   const mod = isMac ? '⌘' : 'Ctrl+';
   const alt = isMac ? '⌥' : 'Alt+';
   const set = (id, text) => { const el = $(id); if (el) el.setAttribute('data-tooltip', text); };
-  set('view-only-btn',     'Editing ON/OFF');
+  set('view-only-btn',     'Lock ON/OFF');
   set('add-text-btn',      'Add Text (T or Double-Click)');
   set('add-mind-btn',      'Add Mindmap node (M)');
   set('add-image-btn',     'Add Image (I)');
   set('group-btn',         'Group / Ungroup (' + mod + 'G)');
   set('save-btn',          'Save (' + mod + 'S)');
-  set('show-shortcuts-btn','Keyboard shortcuts');
+  set('show-shortcuts-btn','Shortcuts');
 }
 
 function buildShortcutsPanel() {
@@ -2400,6 +2400,7 @@ function setupEventListeners() {
       toDelete.forEach(function(o) { o.remove(); });
       selectedObjects = [];
       renderConnectors();
+      updateMindBtn();
       return;
     }
     if (mod && e.code === 'KeyX') {
