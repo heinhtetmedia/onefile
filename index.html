@@ -827,6 +827,7 @@ function startEditingMind(el) {
   const beforeSnapshot = captureState();
   const beforeText = label.textContent;
   isEditing = true;
+  updateMindBtn();
   el.classList.add('mind-edit-mode');
   label.contentEditable = 'true';
   label.focus();
@@ -848,10 +849,13 @@ function startEditingMind(el) {
     label.removeEventListener('keydown', onKeydown);
     if (removeIfEmpty && label.textContent.trim() === '') {
       el.remove();
+      selectedObjects = selectedObjects.filter(function(o) { return o !== el; });
       renderConnectors();
+      updateMindBtn();
       return;
     }
     if (label.textContent !== beforeText) pushUndo(beforeSnapshot);
+    updateMindBtn();
   };
   const onBlur = function() {
     setTimeout(function() { if (document.activeElement !== label) finish(true); }, 50);
@@ -860,6 +864,7 @@ function startEditingMind(el) {
     if (e.key === 'Escape') { e.preventDefault(); label.textContent = beforeText; finish(true); return; }
     if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       finish();
       recordUndo();
       const child = addMindmapToCanvas('', parseFloat(el.style.left) + el.offsetWidth + 60, parseFloat(el.style.top) + Math.round((el.offsetHeight - 38) / 2), undefined, el.id);
@@ -869,6 +874,7 @@ function startEditingMind(el) {
     }
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       const pid = el.dataset.parentId;
       if (pid) {
         const par = document.getElementById(pid);
@@ -880,6 +886,7 @@ function startEditingMind(el) {
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       finish();
       const pid = el.dataset.parentId || undefined;
       recordUndo();
@@ -1886,7 +1893,7 @@ function setupFilenameBar() {
     input.select();
   });
   const commit = function() {
-    const val = (input.value.trim().replace(/\.html$/i, '')) || 'onefile';
+    const val = (input.value.trim().replace(/\.html$/i, '')) || 'Untitled OneFile';
     currentFilename = val;
     display.textContent = val;
     input.value = val;
