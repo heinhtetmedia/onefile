@@ -32,7 +32,7 @@ body { background-color: #f8f9fb; }
 
 #floating-sidebar {
   position: fixed; left: 16px;
-  top: calc(48px + (100vh - 48px) / 2); transform: translateY(-50%);
+  top: 50%; transform: translateY(-50%);
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   padding: 8px 6px; border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
@@ -248,15 +248,22 @@ body { background-color: #f8f9fb; }
 
 .keyboard-shortcuts {
   position: fixed; right: 16px; top: 60px;
-  background-color: white; padding: 12px;
-  border-radius: 8px; font-size: 12px;
+  background-color: white; padding: 14px;
+  border-radius: 10px; font-size: 12px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  display: none; max-width: min(360px, calc(100vw - 24px)); width: max-content; z-index: 160;
+  display: none; max-width: min(720px, calc(100vw - 24px)); width: max-content; z-index: 160;
   border: 1px solid #e8eaed;
   max-height: calc(100vh - 80px); overflow-y: auto;
 }
-.keyboard-shortcuts ul { list-style-type: none; margin: 5px 0 0 0; }
-.keyboard-shortcuts li { margin-bottom: 3px; }
+.shortcut-head { padding-right: 22px; }
+.shortcut-title { font-size: 14px; font-weight: 700; color: #334155; }
+.shortcut-note { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+.shortcut-grid { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 18px 36px; margin-top: 12px; }
+.shortcut-group { min-width: 0; }
+.shortcut-group h3 { font-size: 11px; line-height: 1; color: #64748b; text-transform: uppercase; margin: 0 0 7px; letter-spacing: 0; }
+.keyboard-shortcuts ul { list-style-type: none; margin: 0; }
+.keyboard-shortcuts li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 5px; color: #475569; }
+.keyboard-shortcuts li span:last-child { text-align: right; color: #1f2937; }
 .keyboard-shortcuts kbd {
   background-color: #f7f7f7; border: 1px solid #ccc;
   border-radius: 3px; box-shadow: 0 1px 0 rgba(0,0,0,0.2);
@@ -273,6 +280,14 @@ body { background-color: #f8f9fb; }
   color: #666; font-size: 20px; padding: 0;
 }
 .close-btn:hover { color: #333; background-color: transparent; }
+@media (max-width: 560px) {
+  .keyboard-shortcuts {
+    left: 12px; right: 12px; top: 56px; width: auto; max-width: none;
+    padding: 12px; max-height: calc(100vh - 76px);
+  }
+  .shortcut-grid { grid-template-columns: 1fr; gap: 12px; }
+  .keyboard-shortcuts li { gap: 10px; }
+}
 
 
 #filename-display {
@@ -283,6 +298,7 @@ body { background-color: #f8f9fb; }
   user-select: none; -webkit-user-select: none;
 }
 #filename-display:hover { background: #f1f3f4; border-color: #e8eaed; }
+#filename-display.tooltip:hover { overflow: visible; }
 #filename-input {
   font-size: 16px; font-weight: 500; color: #4a5568; padding: 4px 10px; border-radius: 6px;
   border: 1px solid #1877F2; outline: none; background: white;
@@ -299,6 +315,20 @@ body { background-color: #f8f9fb; }
   .resize-handle.right  { right: -7px; }
   .resize-handle.bottom { bottom: -7px; }
   .resize-handle.left   { left: -7px; }
+}
+
+#mobile-select-btn {
+  position: fixed; left: 16px; bottom: 16px; z-index: 115;
+  width: 44px; height: 44px; border: 1px solid rgba(255,255,255,0.72); border-radius: 12px;
+  background: rgba(255,255,255,0.86); color: #94a3b8;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.12);
+  display: none; align-items: center; justify-content: center; padding: 0;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  touch-action: manipulation;
+}
+#mobile-select-btn.active { color: #334155; background: rgba(241,245,249,0.96); border-color: rgba(148,163,184,0.38); }
+@media (hover: none) {
+  #mobile-select-btn { display: flex; }
 }
 
 #selection-box {
@@ -333,7 +363,7 @@ body { background-color: #f8f9fb; }
 .top-bar-wordmark {
   position: relative; display: inline-block;
   font-size: 13px; font-weight: 600;
-  color: #b8c0cc; font-family: Calibri, sans-serif;
+  color: #94a3b8; font-family: Calibri, sans-serif;
   user-select: none; height: 1.2em; overflow: visible;
 }
 .wordmark-default {
@@ -458,16 +488,16 @@ body { background-color: #f8f9fb; }
     </svg>
   </button>
   <div class="sidebar-divider"></div>
-  <button id="add-text-btn" class="tooltip" data-tooltip="Add Text (T)">
+  <button id="add-text-btn" class="tooltip" data-tooltip="Add text (T)">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>
   </button>
-  <button id="add-mind-btn" class="tooltip" data-tooltip="Add Mindmap node (M)">
+  <button id="add-mind-btn" class="tooltip" data-tooltip="Add mindmap (M)">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3h7zM7 9H4V5h3v4zm10 6h3v4h-3v-4zm0-10h3v4h-3V5z"/></svg>
   </button>
-  <button id="add-image-btn" class="tooltip" data-tooltip="Add Image (I)">
+  <button id="add-image-btn" class="tooltip" data-tooltip="Add image (I)">
     <svg class="icon" viewBox="0 -960 960 960"><path fill="currentColor" d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"/></svg>
   </button>
-  <button id="group-btn" class="tooltip" data-tooltip="Group / Ungroup (Ctrl+G)">
+  <button id="group-btn" class="tooltip" data-tooltip="Group / ungroup (Ctrl G)">
     <svg class="icon" viewBox="0 -960 960 960"><path fill="currentColor" d="M400-80q-33 0-56.5-23.5T320-160v-160H160q-33 0-56.5-23.5T80-400v-400q0-33 23.5-56.5T160-880h400q33 0 56.5 23.5T640-800v160h160q33 0 56.5 23.5T880-560v400q0 33-23.5 56.5T800-80H400Zm0-80h400v-400H560v-240H160v400h240v240Zm80-320Z"/></svg>
   </button>
 </div>
@@ -487,7 +517,7 @@ body { background-color: #f8f9fb; }
 <input type="file" id="file-input" accept="image/*" multiple>
 
 <nav id="bottom-nav">
-  <button type="button" id="save-btn" class="tooltip" data-tooltip="Save (Ctrl+S)" aria-label="Save">
+  <button type="button" id="save-btn" class="tooltip" data-tooltip="Save (Ctrl S)" aria-label="Save">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
   </button>
   <div class="nav-divider"></div>
@@ -501,6 +531,9 @@ body { background-color: #f8f9fb; }
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
   </button>
 </nav>
+<button type="button" id="mobile-select-btn" class="tooltip" data-tooltip="Select mode" aria-label="Touch select mode">
+  <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h6v2H5v4H3V3zm12 0h6v6h-2V5h-4V3zM3 15h2v4h4v2H3v-6zm16 0h2v6h-6v-2h4v-4zM8 8h8v8H8V8zm2 2v4h4v-4h-4z"/></svg>
+</button>
 <div id="text-dialog">
   <textarea id="text-input" placeholder="Enter text (Shift+Enter for line breaks)" style="height: 45px;"></textarea>
   <div id="text-dialog-buttons">
@@ -550,6 +583,7 @@ let scale = 1, panX = 0, panY = 0;
 let selectedObjects = [];
 let isDragging = false, isResizing = false, isEditing = false, isPanning = false;
 let isSelecting = false, isMultiSelecting = false, isSpaceHeld = false;
+let isTouchSelectMode = false;
 let dragStartX, dragStartY, startWidth, startHeight, startLeft, startTop;
 let resizeDirection = '';
 let resizeChildSnapshots = [];
@@ -1755,6 +1789,7 @@ function setViewOnly(viewOnly) {
     container.classList.add('view-only');
     sidebar.classList.add('view-only');
     btn.classList.add('active');
+    setTouchSelectMode(false);
     clearSelection();
     if (isEditing) {
       const tc = document.querySelector('.text-edit-mode .text-content');
@@ -1769,6 +1804,13 @@ function setViewOnly(viewOnly) {
 
 function isViewOnly() {
   return $('canvas-container').classList.contains('view-only');
+}
+
+function setTouchSelectMode(active) {
+  isTouchSelectMode = !!active;
+  const btn = $('mobile-select-btn');
+  if (btn) btn.classList.toggle('active', isTouchSelectMode);
+  if (isTouchSelectMode) clearSelection();
 }
 
 // ============ SAVE ============
@@ -1790,6 +1832,7 @@ function buildStaticBodyHTML(state) {
     '<div id="selection-toolbar" style="display:none">' + $('selection-toolbar').innerHTML + '</div>',
     '<input type="file" id="file-input" accept="image/*" multiple>',
     $('bottom-nav').outerHTML,
+    $('mobile-select-btn').outerHTML.replace(' active', ''),
     '<div id="text-dialog" style="display: none;">' + $('text-dialog').innerHTML + '</div>',
     '<div class="keyboard-shortcuts" style="display: none;">' + document.querySelector('.keyboard-shortcuts').innerHTML + '</div>'
   ].join('\n');
@@ -1823,7 +1866,7 @@ function saveCanvas() {
     'groupObjects','ungroupObjects',
     'copySelection','cutSelection','reIdRecursive','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor',
     'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML',
-    'setViewOnly','isViewOnly',
+    'setViewOnly','isViewOnly','setTouchSelectMode',
     'applyDragMove','applyResizeMove','getTextSideResizeDirection','setupFilenameBar','setupTouchSupport',
     'setupPlatformTooltips','buildShortcutsPanel',
     'buildStaticBodyHTML','saveCanvas','init','setupEventListeners','onResize','rebuildEmbeddedState'
@@ -1845,6 +1888,7 @@ function saveCanvas() {
     "let selectedObjects = [];",
     "let isDragging = false, isResizing = false, isEditing = false, isPanning = false;",
     "let isSelecting = false, isMultiSelecting = false, isSpaceHeld = false;",
+    "let isTouchSelectMode = false;",
     "let dragStartX, dragStartY, startWidth, startHeight, startLeft, startTop;",
     "let resizeDirection = '';",
     "let resizeChildSnapshots = [];",
@@ -1906,64 +1950,95 @@ function rebuildEmbeddedState() {
 
 function setupPlatformTooltips() {
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
-  const mod = isMac ? '⌘' : 'Ctrl+';
-  const alt = isMac ? '⌥' : 'Alt+';
-  const set = (id, text) => { const el = $(id); if (el) el.setAttribute('data-tooltip', text); };
-  set('view-only-btn',     'Lock ON/OFF');
-  set('add-text-btn',      'Add Text (T or Double-Click)');
-  set('add-mind-btn',      'Add Mindmap node (M)');
-  set('add-image-btn',     'Add Image (I)');
-  set('group-btn',         'Group / Ungroup (' + mod + 'G)');
-  set('save-btn',          'Save (' + mod + 'S)');
-  set('show-shortcuts-btn','Shortcuts');
+  const mod = isMac ? '⌘' : 'Ctrl';
+  const set = (id, text, shortcut) => {
+    const el = $(id);
+    if (!el) return;
+    el.setAttribute('data-tooltip', shortcut ? text + ' (' + shortcut + ')' : text);
+    el.removeAttribute('data-shortcut');
+  };
+  set('view-only-btn',      'Lock ON/OFF');
+  set('add-text-btn',       'Add text', 'T');
+  set('add-mind-btn',       'Add mindmap', 'M');
+  set('add-image-btn',      'Add image', 'I');
+  set('group-btn',          'Group / ungroup', mod + ' G');
+  set('save-btn',           'Save', mod + ' S');
+  set('fit-to-content-btn', 'Fit to content', '1');
+  set('zoom-out-btn',       'Zoom out', '-');
+  set('zoom-in-btn',        'Zoom in', '+');
+  set('show-shortcuts-btn', 'Shortcuts');
+  set('filename-display',   'Click to rename');
 }
 
 function buildShortcutsPanel() {
-  const ul = document.querySelector('.keyboard-shortcuts ul');
-  if (!ul) return;
+  const panel = document.querySelector('.keyboard-shortcuts');
+  if (!panel) return;
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
   const M = isMac ? '⌘' : 'Ctrl';
-  const A = isMac ? '⌥' : 'Alt';
   const k = (s) => '<kbd>' + s + '</kbd>';
-  const items = [
-    [k('T'), 'Add text'],
-    [k('I'), 'Add image'],
-    [k('M'), 'Add mindmap node'],
-    [k('Space') + ' + drag', 'Pan canvas'],
-    ['Drag empty canvas', 'Pan canvas'],
-    [k('Shift') + ' + click', 'Multi-select'],
-    [k('Shift') + ' + drag', 'Marquee select'],
-    [k(M) + ' + ' + k('A'), 'Select all'],
-    [k(M) + ' + ' + k('C'), 'Copy'],
-    [k(M) + ' + ' + k('X'), 'Cut'],
-    [k(M) + ' + ' + k('V'), 'Paste'],
-    [k(M) + ' + ' + k('Z'), 'Undo'],
-    [k(M) + ' + ' + k('Y') + ' or ' + k(M) + '+' + k('Shift') + '+' + k('Z'), 'Redo'],
-    [k(M) + ' + ' + k('G'), 'Group / Ungroup'],
-    [k(M) + ' + ' + k('S'), 'Save canvas'],
-    [k('Delete'), 'Delete selected'],
-    [k('Shift') + ' + drag handle', 'Maintain aspect ratio'],
-    ['Double-click handle', 'Reset edge to original'],
-    [k('+') + ' / ' + k('−'), 'Zoom in / out'],
-    [k('1'), 'Fit to content'],
-    ['Double-click canvas', 'Add text'],
-    [k('Shift') + ' + ' + k('Enter'), 'Line break in text']
+  const groups = [
+    ['Create', [
+      ['Add text', k('T')],
+      ['Add image', k('I')],
+      ['Add mindmap', k('M')],
+      ['Text at cursor', 'Double-click canvas'],
+      ['Paste text/image', k(M) + ' ' + k('V')]
+    ]],
+    ['Navigate', [
+      ['Pan', 'Drag empty canvas'],
+      ['Temporary pan', k('Space') + ' + drag'],
+      ['Zoom in / out', k('+') + ' / ' + k('-')],
+      ['Fit content', k('1')]
+    ]],
+    ['Select & Edit', [
+      ['Multi-select', k('Shift') + ' + click'],
+      ['Drag-select', k('Shift') + ' + drag'],
+      ['Select all', k(M) + ' ' + k('A')],
+      ['Delete selected', k('Delete')],
+      ['Edit text/node', 'Double-click object'],
+      ['Resize text width', 'Drag text border'],
+      ['Reset edge', 'Double-click handle']
+    ]],
+    ['Mindmap', [
+      ['Child node', k('Tab')],
+      ['Sibling node', k('Enter')],
+      ['Line break while editing', k('Shift') + ' + ' + k('Enter')],
+      ['Clean up tree', 'Clean up button']
+    ]],
+    ['Clipboard & File', [
+      ['Copy / cut / paste', k(M) + ' ' + k('C') + ' / ' + k('X') + ' / ' + k('V')],
+      ['Undo / redo', k(M) + ' ' + k('Z') + ' / ' + k('Y')],
+      ['Group / ungroup', k(M) + ' ' + k('G')],
+      ['Save OneFile', k(M) + ' ' + k('S')]
+    ]],
+    ['Mobile', [
+      ['Add text', 'Double-tap canvas'],
+      ['Edit object', 'Double-tap object'],
+      ['Zoom', 'Pinch'],
+      ['Drag-select mode', 'Select button']
+    ]]
   ];
-  ul.innerHTML = items.map(([keys, desc]) => '<li>' + keys + ' – ' + desc + '</li>').join('');
-  const note = document.querySelector('.keyboard-shortcuts p');
-  if (note) note.remove();
-  if (!document.getElementById('shortcuts-credits')) {
-    const div = document.createElement('div');
-    div.id = 'shortcuts-credits';
-    div.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #eee;font-size:11px;color:#999;line-height:1.6;';
-    div.innerHTML =
+  panel.innerHTML =
+    '<button class="close-btn">×</button>' +
+    '<div class="shortcut-head">' +
+      '<div class="shortcut-title">Shortcuts</div>' +
+    '</div>' +
+    '<div class="shortcut-grid">' +
+      groups.map(function(group) {
+        return '<section class="shortcut-group"><h3>' + group[0] + '</h3><ul>' +
+          group[1].map(function(item) {
+            return '<li><span>' + item[0] + '</span><span>' + item[1] + '</span></li>';
+          }).join('') +
+        '</ul></section>';
+      }).join('') +
+    '</div>' +
+    '<div id="shortcuts-credits" style="margin-top:12px;padding-top:10px;border-top:1px solid #eee;font-size:11px;color:#999;line-height:1.6;">' +
       'Built by <a href="https://www.linkedin.com/in/heinhtetthemarketer/" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">Hein Htet</a>' +
       ' &nbsp;·&nbsp; ' +
       '<a href="' + REPO_URL + '" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">GitHub</a>' +
       ' &nbsp;·&nbsp; ' +
-      '<a href="' + LATEST_URL + '" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">Get latest version</a>';
-    ul.parentNode.appendChild(div);
-  }
+      '<a href="' + LATEST_URL + '" target="_blank" rel="noopener" style="color:#1877F2;text-decoration:none;">Get latest version</a>' +
+    '</div>';
 }
 
 // ============ DRAG / RESIZE HELPERS (shared by mouse + touch) ============
@@ -2143,7 +2218,11 @@ function setupTouchSupport() {
     if (now - lastTapTime < 300 && lastTapTarget === e.target) {
       lastTapTime = 0;
       const el = document.elementFromPoint(t.clientX, t.clientY);
-      if (el && !el.closest('.canvas-object') && !el.closest('#floating-sidebar') && !isViewOnly()) {
+      const obj = el ? el.closest('.canvas-object') : null;
+      if (obj && !isViewOnly()) {
+        if (obj.classList.contains('text-object')) startEditingText(obj);
+        else if (obj.classList.contains('mind-object')) startEditingMind(obj);
+      } else if (el && !el.closest('.canvas-object') && !el.closest('#floating-sidebar') && !isViewOnly()) {
         const c = screenToCanvas(t.clientX, t.clientY);
         showTextDialog(function(html) { recordUndo(); addTextToCanvas(html, c.x, c.y); }, { x: t.clientX, y: t.clientY });
       }
@@ -2151,7 +2230,13 @@ function setupTouchSupport() {
     }
     lastTapTime = now; lastTapTarget = e.target;
     const el = document.elementFromPoint(t.clientX, t.clientY);
-    if (!el || el.closest('#floating-sidebar') || el.closest('#bottom-nav') || el.closest('#app-top-bar') || el.closest('#mind-action-bar') || el.closest('#selection-toolbar')) return;
+    if (!el || el.closest('#floating-sidebar') || el.closest('#bottom-nav') || el.closest('#app-top-bar') || el.closest('#mind-action-bar') || el.closest('#selection-toolbar') || el.closest('#mobile-select-btn')) return;
+    if (isTouchSelectMode && !isViewOnly()) {
+      isMultiSelecting = true;
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      startDragSelection({ clientX: t.clientX, clientY: t.clientY });
+      return;
+    }
     const handle = el.closest('.resize-handle');
     let obj = el.closest('.canvas-object');
     while (obj && obj.parentElement && obj.parentElement.classList.contains('group-object')) obj = obj.parentElement;
@@ -2213,6 +2298,9 @@ function setupTouchSupport() {
     } else if (isResizing && selectedObjects.length > 0) {
       e.preventDefault();
       applyResizeMove(t.clientX, t.clientY, false);
+    } else if (isSelecting) {
+      e.preventDefault();
+      updateDragSelection({ clientX: t.clientX, clientY: t.clientY });
     }
   }, { passive: false });
 
@@ -2233,6 +2321,10 @@ function setupTouchSupport() {
           Math.abs((parseFloat(obj.style.height)||0) - startHeight) > 0.5);
         commitGesture(changed);
         isResizing = false; resizeDirection = ''; resizeChildSnapshots = [];
+      } else if (isSelecting) {
+        const t = e.changedTouches && e.changedTouches[0];
+        endDragSelection({ clientX: t ? t.clientX : dragStartX, clientY: t ? t.clientY : dragStartY });
+        isMultiSelecting = false;
       }
     }
   });
@@ -2249,6 +2341,14 @@ function setupEventListeners() {
   const inp = $('text-input');
 
   $('view-only-btn').addEventListener('click', () => setViewOnly(!isViewOnly()));
+  const mobileSelectBtn = $('mobile-select-btn');
+  if (mobileSelectBtn) {
+    mobileSelectBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (isViewOnly()) return;
+      setTouchSelectMode(!isTouchSelectMode);
+    });
+  }
 
   $('add-image-btn').addEventListener('click', () => {
     if (isViewOnly()) return;

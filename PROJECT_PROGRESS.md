@@ -18,6 +18,10 @@ Recent working areas:
 - Cross-document Onefile copy/paste now writes object payloads through the native copy/cut event where available, with localStorage fallback.
 - Pasted external text/images and Onefile objects now anchor their top edge at about 30% from the top of the viewport.
 - Mindmap connector lines are layered above images but below nodes/text.
+- Left toolbar is centered against the full viewport height.
+- Mobile supports double-tap edit for text and mindmap nodes, plus a bottom-left touch select-mode button for drag-select.
+- Shortcuts popup is grouped, wider on desktop, and collapses to one column on mobile.
+- Tooltips use simple bracketed shortcut text like `Add text (T)` after rejecting the keycap-style tooltip treatment as visually noisy.
 
 ## Deferred Decisions
 
