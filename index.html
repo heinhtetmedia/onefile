@@ -117,6 +117,11 @@ body { background-color: #f8f9fb; }
   position: absolute;
   cursor: move; user-select: none;
 }
+.image-object { z-index: 1; }
+#connector-layer { z-index: 2; }
+.text-object,
+.mind-object,
+.group-object { z-index: 3; }
 .canvas-object.selected { outline: 1px solid #1a1a1a; outline-offset: 0; }
 .group-object.selected { outline: 2px dashed #1a1a1a; outline-offset: 2px; }
 
@@ -146,6 +151,9 @@ body { background-color: #f8f9fb; }
 .text-object > .resize-handle.bottom-right { display: none !important; }
 .text-object.selected > .resize-handle.left,
 .text-object.selected > .resize-handle.right { display: block !important; }
+.text-object.selected { cursor: move; }
+.text-object.selected.side-resize-left,
+.text-object.selected.side-resize-right { cursor: ew-resize; }
 
 
 .text-object {
@@ -272,6 +280,7 @@ body { background-color: #f8f9fb; }
   padding: 4px 10px; border-radius: 6px; border: 1px solid transparent;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   font-family: Calibri, sans-serif; transition: background 0.15s, border-color 0.15s;
+  user-select: none; -webkit-user-select: none;
 }
 #filename-display:hover { background: #f1f3f4; border-color: #e8eaed; }
 #filename-input {
@@ -312,11 +321,13 @@ body { background-color: #f8f9fb; }
   position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 150;
   background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(0,0,0,0.06);
-  display: flex; align-items: center; padding: 0 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; padding: 0 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  user-select: none; -webkit-user-select: none;
 }
 .top-bar-logo {
-  flex-shrink: 0; display: flex; align-items: center; margin-right: 8px;
+  justify-self: start; display: flex; align-items: center; margin-right: 8px;
   cursor: default;
 }
 .top-bar-wordmark {
@@ -344,11 +355,11 @@ body { background-color: #f8f9fb; }
   .top-bar-logo:hover .wordmark-hover   { opacity: 0; }
 }
 .top-bar-filename-wrap {
-  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;
+  grid-column: 2; min-width: 0; display: flex; align-items: center; justify-content: center;
   max-width: min(560px, 50vw); margin: 0 auto;
 }
 .top-bar-actions {
-  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+  justify-self: end; display: flex; align-items: center; gap: 4px;
 }
 .icon-btn {
   width: 32px; height: 32px; padding: 0; border: none; border-radius: 6px;
@@ -377,23 +388,23 @@ body { background-color: #f8f9fb; }
 .nav-divider { width: 1px; height: 18px; background: rgba(0,0,0,0.12); margin: 0 4px; flex-shrink: 0; }
 
 #mind-action-bar {
-  position: fixed; z-index: 110;
-  background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 10px; padding: 4px;
-  display: flex; align-items: center; gap: 2px;
+  position: fixed; z-index: 120;
+  background: rgba(255,255,255,0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(15,23,42,0.12); border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 12px; padding: 5px 6px;
+  display: none; align-items: center; gap: 2px;
+  touch-action: manipulation;
 }
 #mind-action-bar button {
-  height: 32px; padding: 0 10px; border: none; border-radius: 7px;
+  height: 34px; padding: 0 9px; border: none; border-radius: 7px;
   background: transparent; color: #475569; cursor: pointer;
-  display: flex; align-items: center; gap: 5px;
-  font-size: 13px; font-weight: 500; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 500; font-family: Calibri, sans-serif; white-space: nowrap;
   transition: background 0.12s, color 0.12s;
 }
-#mind-action-bar button:hover { background: #f1f5f9; }
-#mind-action-bar #mind-reflow-btn { width: 32px; padding: 0; justify-content: center; color: #94a3b8; }
-#mind-action-bar #mind-reflow-btn:hover { color: #475569; }
-.mind-bar-divider { width: 1px; height: 18px; background: rgba(0,0,0,0.1); margin: 0 2px; flex-shrink: 0; }
+#mind-action-bar button:hover { background: rgba(241,245,249,0.9); color: #334155; }
+.mind-bar-divider { width: 1px; height: 20px; background: rgba(15,23,42,0.1); margin: 0 4px; flex-shrink: 0; }
+#mind-cleanup-btn { color: #64748b; font-weight: 500; }
 
 #selection-toolbar {
   position: fixed; z-index: 110;
@@ -461,24 +472,11 @@ body { background-color: #f8f9fb; }
   </button>
 </div>
 <div id="mind-action-bar" style="display:none">
-  <button id="mind-child-btn" class="tooltip" data-tooltip="Add Child (Tab)" aria-label="Add child node">
-    <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Child
-  </button>
-  <button id="mind-sibling-btn" class="tooltip" data-tooltip="Add Sibling (Enter)" aria-label="Add sibling node">
-    <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Sibling
-  </button>
-  <div class="mind-bar-divider"></div>
-  <button id="mind-reflow-btn" class="tooltip" data-tooltip="Clean Up" aria-label="Clean up mindmap layout">
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <rect x="2" y="9" width="6" height="5" rx="1.5"/>
-      <rect x="16" y="4" width="6" height="4" rx="1.5"/>
-      <rect x="16" y="11" width="6" height="4" rx="1.5"/>
-      <rect x="16" y="18" width="6" height="4" rx="1.5"/>
-      <line x1="8" y1="11.5" x2="13" y2="6"/>
-      <line x1="8" y1="11.5" x2="13" y2="13"/>
-      <line x1="8" y1="11.5" x2="13" y2="20"/>
-    </svg>
-  </button>
+  <button id="mind-child-btn" class="tooltip" data-tooltip="Tab" aria-label="Add child node">+ Child</button>
+  <div id="mind-child-divider" class="mind-bar-divider"></div>
+  <button id="mind-sibling-btn" class="tooltip" data-tooltip="Enter" aria-label="Add sibling node">+ Sibling</button>
+  <div id="mind-cleanup-divider" class="mind-bar-divider"></div>
+  <button id="mind-cleanup-btn" class="tooltip" data-tooltip="Clean up layout" aria-label="Clean up mindmap layout">Clean up</button>
 </div>
 <div id="selection-toolbar" style="display:none">
   <button id="sel-delete-btn" class="tooltip" data-tooltip="Delete" aria-label="Delete selected">
@@ -519,8 +517,8 @@ body { background-color: #f8f9fb; }
     <li><kbd>I</kbd> – Add image</li>
     <li><kbd>M</kbd> – Add mindmap node</li>
     <li><kbd>Space</kbd> + drag – Pan canvas</li>
-    <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + click – Multi-select</li>
-    <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + drag – Marquee select</li>
+    <li><kbd>Shift</kbd> + click – Multi-select</li>
+    <li><kbd>Shift</kbd> + drag – Marquee select</li>
     <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>A</kbd> – Select all</li>
     <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd> – Copy</li>
     <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>X</kbd> – Cut</li>
@@ -546,6 +544,7 @@ const APP_NAME = 'Onefile';
 const APP_VERSION = '1.0.0';
 const MAX_UNDO_STEPS = 50;
 const MIN_OBJECT_SIZE = 20;
+const INTERNAL_CLIPBOARD_MARKER = 'ONEFILE_INTERNAL_CLIPBOARD';
 
 let scale = 1, panX = 0, panY = 0;
 let selectedObjects = [];
@@ -579,6 +578,10 @@ function captureObject(obj) {
     width:  parseFloat(obj.style.width)  || obj.offsetWidth,
     height: parseFloat(obj.style.height) || obj.offsetHeight
   };
+  if (out.type === 'text') {
+    out.width = obj.style.width ? (parseFloat(obj.style.width) || obj.offsetWidth) : null;
+    out.height = null;
+  }
   if (obj._origRect) out.origRect = { ...obj._origRect };
   if (out.type === 'image') {
     const img = obj.querySelector('img');
@@ -628,7 +631,10 @@ function restoreObject(state, parent) {
   }
   el.style.left = (state.left || 0) + 'px';
   el.style.top = (state.top || 0) + 'px';
-  if (state.width && state.type !== 'mindmap') el.style.width = state.width + 'px';
+  if (state.width && state.type !== 'mindmap') {
+    el.style.width = state.width + 'px';
+    if (state.type === 'text') el.style.maxWidth = 'none';
+  }
   if (state.height) el.style.height = state.height + 'px';
   parent.appendChild(el);
   if (state.origRect) {
@@ -756,6 +762,7 @@ function revertHandleToOrigin(obj, position) {
     obj.style.left = newL + 'px';
     obj.style.top  = newT + 'px';
     obj.style.width = newW + 'px';
+    if (isText) obj.style.maxWidth = 'none';
     if (!isText) obj.style.height = newH + 'px';
   }
 }
@@ -878,6 +885,7 @@ function startEditingMind(el) {
   const beforeText = label.textContent;
   isEditing = true;
   updateMindBtn();
+  updateSelectionToolbar();
   el.classList.add('mind-edit-mode');
   label.contentEditable = 'true';
   label.focus();
@@ -889,6 +897,10 @@ function startEditingMind(el) {
   sel.addRange(r);
 
   let finished = false;
+  const onInput = function() {
+    renderConnectors();
+    requestAnimationFrame(updateMindBtn);
+  };
   const finish = function(removeIfEmpty) {
     if (finished) return;
     finished = true;
@@ -897,6 +909,7 @@ function startEditingMind(el) {
     isEditing = false;
     label.removeEventListener('blur', onBlur);
     label.removeEventListener('keydown', onKeydown);
+    label.removeEventListener('input', onInput);
     document.removeEventListener('touchstart', onOutsideTouch);
     if (removeIfEmpty && label.textContent.trim() === '') {
       el.remove();
@@ -924,7 +937,8 @@ function startEditingMind(el) {
       e.stopPropagation();
       finish();
       recordUndo();
-      const child = addMindmapToCanvas('', parseFloat(el.style.left) + el.offsetWidth + 60, parseFloat(el.style.top) + Math.round((el.offsetHeight - 38) / 2), undefined, el.id);
+      const pos = getNewChildPosition(el);
+      const child = addMindmapToCanvas('', pos.left, pos.top, undefined, el.id);
       renderConnectors();
       setTimeout(function() { startEditingMind(child); }, 0);
       return;
@@ -958,6 +972,7 @@ function startEditingMind(el) {
     }
     e.stopPropagation();
   };
+  label.addEventListener('input', onInput);
   label.addEventListener('blur', onBlur);
   label.addEventListener('keydown', onKeydown);
   label.addEventListener('paste', function(e) {
@@ -1122,7 +1137,7 @@ function ensureConnectorLayer() {
   svg.setAttribute('width', '100000');
   svg.setAttribute('height', '100000');
   svg.setAttribute('viewBox', '-50000 -50000 100000 100000');
-  svg.setAttribute('style', 'position:absolute; left:-50000px; top:-50000px; pointer-events:none; overflow:visible;');
+  svg.setAttribute('style', 'position:absolute; left:-50000px; top:-50000px; pointer-events:none; overflow:visible; z-index:2;');
   wrapper.insertBefore(svg, wrapper.firstChild);
   return svg;
 }
@@ -1191,6 +1206,25 @@ function getMindDescendants(nodeEl) {
   return all.filter(function(n) { return ids.has(n.id); });
 }
 
+function getNewChildPosition(parentEl) {
+  const existing = Array.from($('canvas-wrapper').querySelectorAll('.mind-object[data-parent-id="' + parentEl.id + '"]'));
+  if (existing.length > 0) {
+    const lowest = existing.reduce(function(best, child) {
+      const childBottom = (parseFloat(child.style.top) || 0) + child.offsetHeight;
+      const bestBottom = (parseFloat(best.style.top) || 0) + best.offsetHeight;
+      return childBottom > bestBottom ? child : best;
+    });
+    return {
+      left: parseFloat(lowest.style.left) || 0,
+      top: (parseFloat(lowest.style.top) || 0) + lowest.offsetHeight + 16
+    };
+  }
+  return {
+    left: parseFloat(parentEl.style.left) + parentEl.offsetWidth + 60,
+    top: parseFloat(parentEl.style.top) + Math.round((parentEl.offsetHeight - 38) / 2)
+  };
+}
+
 function reflowMindTree(rootEl) {
   const H_GAP = 80, V_GAP = 16;
   const wrapper = $('canvas-wrapper');
@@ -1224,13 +1258,18 @@ function reflowMindTree(rootEl) {
 
 function updateMindBtn() {
   const bar = $('mind-action-bar');
-  if (!bar) return;
+  const siblingBtn = $('mind-sibling-btn');
+  const childDivider = $('mind-child-divider');
+  if (!bar || !siblingBtn || !childDivider) return;
   const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-  if (!mindSel || isEditing) { bar.style.display = 'none'; return; }
+  if (!mindSel) { bar.style.display = 'none'; return; }
   const r = mindSel.getBoundingClientRect();
+  const canAddSibling = !!mindSel.dataset.parentId;
+  siblingBtn.style.display = canAddSibling ? 'flex' : 'none';
+  childDivider.style.display = canAddSibling ? 'block' : 'none';
   bar.style.display = 'flex';
-  bar.style.left = Math.round(r.right + 8) + 'px';
-  bar.style.top  = Math.round(r.top + r.height / 2 - 20) + 'px';
+  bar.style.left = Math.round(r.right + 12) + 'px';
+  bar.style.top  = Math.round(r.top + r.height / 2 - bar.offsetHeight / 2) + 'px';
 }
 
 function updateSelectionToolbar() {
@@ -1370,6 +1409,8 @@ function endDragSelection(e) {
   });
   $('selection-box').style.display = 'none';
   isSelecting = false;
+  updateMindBtn();
+  updateSelectionToolbar();
 }
 
 // ============ GROUP / UNGROUP ============
@@ -1454,16 +1495,26 @@ function ungroupObjects() {
 
 // ============ CLIPBOARD ============
 
-function copySelection() {
+function copySelection(clipboardData) {
   if (selectedObjects.length === 0) return;
   const toCapture = new Set(selectedObjects);
   selectedObjects.forEach(function(o) {
     if (o.classList.contains('mind-object')) getMindDescendants(o).forEach(function(d) { toCapture.add(d); });
   });
   internalClipboard = Array.from(toCapture).map(captureObject);
+  saveInternalClipboard();
+  const payload = INTERNAL_CLIPBOARD_MARKER + '\n' + JSON.stringify(internalClipboard);
+  if (clipboardData && clipboardData.setData) {
+    clipboardData.setData('text/plain', payload);
+    try { clipboardData.setData('application/x-onefile', payload); } catch (err) {}
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(payload).catch(function() {});
+  }
 }
 
-function cutSelection() {
+function cutSelection(clipboardData) {
   if (selectedObjects.length === 0) return;
   recordUndo();
   const toRemove = new Set(selectedObjects);
@@ -1471,10 +1522,20 @@ function cutSelection() {
     if (o.classList.contains('mind-object')) getMindDescendants(o).forEach(function(d) { toRemove.add(d); });
   });
   internalClipboard = Array.from(toRemove).map(captureObject);
+  saveInternalClipboard();
+  const payload = INTERNAL_CLIPBOARD_MARKER + '\n' + JSON.stringify(internalClipboard);
+  if (clipboardData && clipboardData.setData) {
+    clipboardData.setData('text/plain', payload);
+    try { clipboardData.setData('application/x-onefile', payload); } catch (err) {}
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(payload).catch(function() {});
+  }
   toRemove.forEach(function(o) { o.remove(); });
   selectedObjects = [];
   renderConnectors();
   updateMindBtn();
+  updateSelectionToolbar();
 }
 
 function reIdRecursive(s) {
@@ -1482,8 +1543,40 @@ function reIdRecursive(s) {
   if (s.type === 'group') (s.children || []).forEach(reIdRecursive);
 }
 
+function saveInternalClipboard() {
+  try {
+    localStorage.setItem('onefile_internal_clipboard', JSON.stringify(internalClipboard));
+  } catch (err) {}
+}
+
+function loadInternalClipboard() {
+  if (internalClipboard.length > 0) return true;
+  try {
+    const raw = localStorage.getItem('onefile_internal_clipboard');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    internalClipboard = Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    internalClipboard = [];
+  }
+  return internalClipboard.length > 0;
+}
+
+function loadInternalClipboardFromText(text) {
+  if (!text || text === INTERNAL_CLIPBOARD_MARKER) return loadInternalClipboard();
+  if (text.indexOf(INTERNAL_CLIPBOARD_MARKER + '\n') !== 0) return false;
+  try {
+    const parsed = JSON.parse(text.slice(INTERNAL_CLIPBOARD_MARKER.length + 1));
+    internalClipboard = Array.isArray(parsed) ? parsed : [];
+    saveInternalClipboard();
+  } catch (err) {
+    internalClipboard = [];
+  }
+  return internalClipboard.length > 0;
+}
+
 function pasteFromClipboard() {
-  if (internalClipboard.length === 0) return false;
+  if (!loadInternalClipboard()) return false;
   recordUndo();
   clearSelection();
   const wrapper = $('canvas-wrapper');
@@ -1494,11 +1587,14 @@ function pasteFromClipboard() {
   });
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   internalClipboard.forEach(item => {
+    const itemW = item.width || (item.origRect && item.origRect.width) || 0;
+    const itemH = item.height || (item.origRect && item.origRect.height) || 0;
     minX = Math.min(minX, item.left); minY = Math.min(minY, item.top);
-    maxX = Math.max(maxX, item.left + item.width); maxY = Math.max(maxY, item.top + item.height);
+    maxX = Math.max(maxX, item.left + itemW); maxY = Math.max(maxY, item.top + itemH);
   });
-  const dx = (window.innerWidth / 2 - panX) / scale - (minX + maxX) / 2;
-  const dy = (window.innerHeight / 2 - panY) / scale - (minY + maxY) / 2;
+  const anchor = getPasteAnchor(maxX - minX);
+  const dx = anchor.left - minX;
+  const dy = anchor.top - minY;
   internalClipboard.forEach(item => {
     const copy = JSON.parse(JSON.stringify(item));
     if (copy.type === 'mindmap') {
@@ -1514,6 +1610,13 @@ function pasteFromClipboard() {
   });
   renderConnectors();
   return true;
+}
+
+function getPasteAnchor(objectWidth) {
+  return {
+    left: (window.innerWidth / 2 - panX) / scale - (objectWidth || 0) / 2,
+    top: (window.innerHeight * 0.3 - panY) / scale
+  };
 }
 
 // ============ TEXT EDITING ============
@@ -1535,6 +1638,7 @@ function startEditingText(textElement) {
   ['bold','italic','underline'].forEach(cmd => {
     const btn = document.createElement('button');
     btn.type = 'button';
+    btn.tabIndex = -1;
     btn.textContent = cmd[0].toUpperCase();
     btn.title = cmd;
     btn.addEventListener('mousedown', e => e.preventDefault());
@@ -1564,19 +1668,27 @@ function startEditingText(textElement) {
     if (tc.innerHTML !== beforeHTML) pushUndo(beforeSnapshot);
     tc.removeEventListener('blur', onBlur);
     tc.removeEventListener('keydown', onKeydown);
+    tc.removeEventListener('paste', onPaste);
   };
   const onBlur = function() {
     setTimeout(() => { if (document.activeElement !== tc) finish(); }, 50);
   };
   const onKeydown = function(e) {
     if (e.key === 'Escape') { e.preventDefault(); finish(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); return; }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       finish();
     }
   };
+  const onPaste = function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
   tc.addEventListener('blur', onBlur);
   tc.addEventListener('keydown', onKeydown);
+  tc.addEventListener('paste', onPaste);
 }
 
 // ============ TEXT DIALOG (for new text) ============
@@ -1620,13 +1732,17 @@ function commitTextDialog() {
   const cb = dlg._callback;
   hideTextDialog();
   if (text.trim() && cb) {
-    const html = escapeHTML(text).replace(/\n/g, '<br>');
+    const html = plainTextToHTML(text);
     cb(html);
   }
 }
 
 function escapeHTML(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function plainTextToHTML(text) {
+  return escapeHTML(text).replace(/\n/g, '<br>');
 }
 
 // ============ VIEW-ONLY TOGGLE ============
@@ -1700,15 +1816,15 @@ function saveCanvas() {
     'createMindmapElement','addMindmapToCanvas','startEditingMind',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
-    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants',
+    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getNewChildPosition',
     'reflowMindTree','updateMindBtn','updateSelectionToolbar','initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
-    'copySelection','cutSelection','reIdRecursive','pasteFromClipboard',
-    'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML',
+    'copySelection','cutSelection','reIdRecursive','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor',
+    'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML',
     'setViewOnly','isViewOnly',
-    'applyDragMove','applyResizeMove','setupFilenameBar','setupTouchSupport',
+    'applyDragMove','applyResizeMove','getTextSideResizeDirection','setupFilenameBar','setupTouchSupport',
     'setupPlatformTooltips','buildShortcutsPanel',
     'buildStaticBodyHTML','saveCanvas','init','setupEventListeners','onResize','rebuildEmbeddedState'
   ];
@@ -1722,7 +1838,8 @@ function saveCanvas() {
     "const APP_NAME = " + JSON.stringify(APP_NAME) + ";\n" +
     "const APP_VERSION = " + JSON.stringify(APP_VERSION) + ";\n" +
     "const MAX_UNDO_STEPS = " + MAX_UNDO_STEPS + ";\n" +
-    "const MIN_OBJECT_SIZE = " + MIN_OBJECT_SIZE + ";\n";
+    "const MIN_OBJECT_SIZE = " + MIN_OBJECT_SIZE + ";\n" +
+    "const INTERNAL_CLIPBOARD_MARKER = " + JSON.stringify(INTERNAL_CLIPBOARD_MARKER) + ";\n";
   const stateSrc = [
     "let scale = 1, panX = 0, panY = 0;",
     "let selectedObjects = [];",
@@ -1814,8 +1931,8 @@ function buildShortcutsPanel() {
     [k('M'), 'Add mindmap node'],
     [k('Space') + ' + drag', 'Pan canvas'],
     ['Drag empty canvas', 'Pan canvas'],
-    [k(M) + ' + click', 'Multi-select'],
-    [k(M) + ' + drag', 'Marquee select'],
+    [k('Shift') + ' + click', 'Multi-select'],
+    [k('Shift') + ' + drag', 'Marquee select'],
     [k(M) + ' + ' + k('A'), 'Select all'],
     [k(M) + ' + ' + k('C'), 'Copy'],
     [k(M) + ' + ' + k('X'), 'Cut'],
@@ -1940,6 +2057,7 @@ function applyResizeMove(clientX, clientY, shiftKey) {
   newH = Math.max(newH, MIN_OBJECT_SIZE);
   if (isText) {
     obj.style.width = newW + 'px';
+    obj.style.maxWidth = 'none';
     obj.style.left  = newL + 'px';
   } else {
     obj.style.width  = newW + 'px';
@@ -1959,6 +2077,15 @@ function applyResizeMove(clientX, clientY, shiftKey) {
     }
   }
   renderConnectors();
+}
+
+function getTextSideResizeDirection(obj, e) {
+  if (!obj || !obj.classList.contains('text-object') || !obj.classList.contains('selected')) return '';
+  const r = obj.getBoundingClientRect();
+  const band = Math.max(8, 10 * scale);
+  if (Math.abs(e.clientX - r.left) <= band && e.clientY >= r.top - band && e.clientY <= r.bottom + band) return 'left';
+  if (Math.abs(e.clientX - r.right) <= band && e.clientY >= r.top - band && e.clientY <= r.bottom + band) return 'right';
+  return '';
 }
 
 // ============ FILENAME BAR ============
@@ -2028,10 +2155,11 @@ function setupTouchSupport() {
     const handle = el.closest('.resize-handle');
     let obj = el.closest('.canvas-object');
     while (obj && obj.parentElement && obj.parentElement.classList.contains('group-object')) obj = obj.parentElement;
-    if (handle && !isViewOnly()) {
+    const sideResizeDirection = handle ? '' : getTextSideResizeDirection(obj, t);
+    if ((handle || sideResizeDirection) && !isViewOnly()) {
       isResizing = true;
-      resizeDirection = handle.dataset.position;
-      let topObj = handle.closest('.canvas-object');
+      resizeDirection = sideResizeDirection || handle.dataset.position;
+      let topObj = sideResizeDirection ? obj : handle.closest('.canvas-object');
       while (topObj.parentElement && topObj.parentElement.classList.contains('group-object')) topObj = topObj.parentElement;
       if (!selectedObjects.includes(topObj)) { clearSelection(); selectObject(topObj); }
       resizeChildSnapshots = [];
@@ -2156,7 +2284,10 @@ function setupEventListeners() {
   $('add-text-dialog-btn').addEventListener('click', commitTextDialog);
   inp.addEventListener('keydown', function(e) {
     const isTouch = window.matchMedia('(hover: none)').matches;
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
       if (isTouch) return; // mobile: allow native newline; use Done button to confirm
       e.preventDefault();
       commitTextDialog();
@@ -2205,31 +2336,44 @@ function setupEventListeners() {
     }
     return root;
   }
-  $('mind-reflow-btn').addEventListener('click', function() {
+  function afterMindEdit(action) {
+    if (!isEditing) { action(); return; }
+    const activeMind = document.querySelector('.mind-edit-mode .mind-label');
+    if (activeMind) activeMind.blur();
+    setTimeout(action, 80);
+  }
+  $('mind-cleanup-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
-    const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-    if (!mindSel) return;
-    recordUndo();
-    reflowMindTree(getMindRoot(mindSel));
+    afterMindEdit(function() {
+      const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
+      if (!mindSel) return;
+      recordUndo();
+      reflowMindTree(getMindRoot(mindSel));
+    });
   });
   $('mind-child-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
-    const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-    if (!mindSel) return;
-    recordUndo();
-    const child = addMindmapToCanvas('', parseFloat(mindSel.style.left) + mindSel.offsetWidth + 60, parseFloat(mindSel.style.top) + Math.round((mindSel.offsetHeight - 38) / 2), undefined, mindSel.id);
-    renderConnectors();
-    setTimeout(function() { startEditingMind(child); }, 0);
+    afterMindEdit(function() {
+      const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
+      if (!mindSel) return;
+      recordUndo();
+      const pos = getNewChildPosition(mindSel);
+      const child = addMindmapToCanvas('', pos.left, pos.top, undefined, mindSel.id);
+      renderConnectors();
+      setTimeout(function() { startEditingMind(child); }, 0);
+    });
   });
   $('mind-sibling-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
-    const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-    if (!mindSel) return;
-    const pid = mindSel.dataset.parentId || undefined;
-    recordUndo();
-    const sib = addMindmapToCanvas('', parseFloat(mindSel.style.left), parseFloat(mindSel.style.top) + mindSel.offsetHeight + 16, undefined, pid);
-    renderConnectors();
-    setTimeout(function() { startEditingMind(sib); }, 0);
+    afterMindEdit(function() {
+      const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
+      if (!mindSel) return;
+      const pid = mindSel.dataset.parentId || undefined;
+      recordUndo();
+      const sib = addMindmapToCanvas('', parseFloat(mindSel.style.left), parseFloat(mindSel.style.top) + mindSel.offsetHeight + 16, undefined, pid);
+      renderConnectors();
+      setTimeout(function() { startEditingMind(sib); }, 0);
+    });
   });
   $('sel-delete-btn').addEventListener('click', function() {
     if (isViewOnly() || selectedObjects.length === 0) return;
@@ -2326,13 +2470,13 @@ function setupEventListeners() {
     while (target && target.parentElement && target.parentElement.classList.contains('group-object')) {
       target = target.parentElement;
     }
+    const sideResizeDirection = handle ? '' : getTextSideResizeDirection(target, e);
 
-    if (handle) {
+    if (handle || sideResizeDirection) {
       e.preventDefault();
       isResizing = true;
-      resizeDirection = handle.dataset.position;
-      const obj = handle.closest('.canvas-object');
-      let topObj = obj;
+      resizeDirection = sideResizeDirection || handle.dataset.position;
+      let topObj = sideResizeDirection ? target : handle.closest('.canvas-object');
       while (topObj && topObj.parentElement && topObj.parentElement.classList.contains('group-object')) {
         topObj = topObj.parentElement;
       }
@@ -2362,7 +2506,7 @@ function setupEventListeners() {
     } else if (target) {
       e.preventDefault();
       isDragging = true;
-      if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      if (e.shiftKey) {
         selectObject(target, true);
       } else if (!selectedObjects.includes(target)) {
         clearSelection();
@@ -2373,7 +2517,7 @@ function setupEventListeners() {
       dragStartY = e.clientY;
       beginGesture();
     } else {
-      if (e.ctrlKey || e.metaKey) {
+      if (e.shiftKey) {
         isMultiSelecting = true;
         startDragSelection(e);
       } else {
@@ -2387,6 +2531,14 @@ function setupEventListeners() {
   });
 
   document.addEventListener('mousemove', function(e) {
+    if (!isDragging && !isResizing && !isPanning && !isSelecting) {
+      document.querySelectorAll('.text-object.side-resize-left,.text-object.side-resize-right').forEach(function(o) {
+        o.classList.remove('side-resize-left', 'side-resize-right');
+      });
+      const hoverObj = e.target.closest('.text-object');
+      const dir = getTextSideResizeDirection(hoverObj, e);
+      if (dir && hoverObj) hoverObj.classList.add('side-resize-' + dir);
+    }
     if (isPanning) {
       e.preventDefault();
       panX += e.clientX - dragStartX;
@@ -2447,6 +2599,9 @@ function setupEventListeners() {
     }
 
     if (dlg.style.display === 'block') {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         hideTextDialog();
@@ -2464,7 +2619,8 @@ function setupEventListeners() {
       if (e.key === 'Tab') {
         e.preventDefault();
         recordUndo();
-        const child = addMindmapToCanvas('', parseFloat(selectedMind.style.left) + selectedMind.offsetWidth + 60, parseFloat(selectedMind.style.top) + Math.round((selectedMind.offsetHeight - 38) / 2), undefined, selectedMind.id);
+        const pos = getNewChildPosition(selectedMind);
+        const child = addMindmapToCanvas('', pos.left, pos.top, undefined, selectedMind.id);
         renderConnectors();
         setTimeout(function() { startEditingMind(child); }, 0);
         return;
@@ -2531,26 +2687,45 @@ function setupEventListeners() {
       selectedObjects = [];
       renderConnectors();
       updateMindBtn();
+      updateSelectionToolbar();
       return;
     }
     if (mod && e.code === 'KeyX') {
       if (isViewOnly()) return;
       if (selectedObjects.length === 0) return;
-      e.preventDefault();
-      cutSelection();
+      const cutToken = Date.now();
+      window._onefileClipboardToken = cutToken;
+      window._onefileClipboardHandled = false;
+      setTimeout(function() {
+        if (window._onefileClipboardToken === cutToken && !window._onefileClipboardHandled && selectedObjects.length > 0) {
+          cutSelection();
+        }
+      }, 120);
       return;
     }
     if (mod && e.code === 'KeyC') {
       if (selectedObjects.length === 0) return;
-      e.preventDefault();
-      copySelection();
+      const copyToken = Date.now();
+      window._onefileClipboardToken = copyToken;
+      window._onefileClipboardHandled = false;
+      setTimeout(function() {
+        if (window._onefileClipboardToken === copyToken && !window._onefileClipboardHandled && selectedObjects.length > 0) {
+          copySelection();
+        }
+      }, 120);
       return;
     }
     if (mod && e.code === 'KeyV') {
       if (isViewOnly()) return;
-      if (internalClipboard.length > 0) {
-        e.preventDefault();
-        pasteFromClipboard();
+      if (loadInternalClipboard()) {
+        const pasteToken = Date.now();
+        window._onefilePasteToken = pasteToken;
+        window._onefilePasteHandled = false;
+        setTimeout(function() {
+          if (window._onefilePasteToken === pasteToken && !window._onefilePasteHandled && loadInternalClipboard()) {
+            pasteFromClipboard();
+          }
+        }, 80);
       }
       return;
     }
@@ -2597,6 +2772,20 @@ function setupEventListeners() {
     }
   });
 
+  document.addEventListener('copy', function(e) {
+    if (isEditing || selectedObjects.length === 0) return;
+    e.preventDefault();
+    window._onefileClipboardHandled = true;
+    copySelection(e.clipboardData);
+  });
+
+  document.addEventListener('cut', function(e) {
+    if (isEditing || isViewOnly() || selectedObjects.length === 0) return;
+    e.preventDefault();
+    window._onefileClipboardHandled = true;
+    cutSelection(e.clipboardData);
+  });
+
   document.addEventListener('mousedown', function(e) {
     if (dlg.style.display !== 'block') return;
     if (e.target.closest('#text-dialog')) return;
@@ -2609,24 +2798,37 @@ function setupEventListeners() {
 
   document.addEventListener('paste', function(e) {
     if (isEditing || isViewOnly()) return;
-    if (!e.clipboardData || !e.clipboardData.items) return;
+    if (!e.clipboardData) return;
     let handled = false;
-    for (let i = 0; i < e.clipboardData.items.length; i++) {
+    const text = e.clipboardData.getData('text/plain');
+    if (e.clipboardData.items) for (let i = 0; i < e.clipboardData.items.length; i++) {
       const it = e.clipboardData.items[i];
       if (it.type.indexOf('image') === 0) {
         const blob = it.getAsFile();
         const reader = new FileReader();
         reader.onload = function(ev) {
           recordUndo();
-          const cx = (window.innerWidth / 2 - panX) / scale;
-          const cy = (window.innerHeight / 2 - panY) / scale;
-          addImageToCanvas(ev.target.result, cx - 150, cy - 150);
+          const anchor = getPasteAnchor(300);
+          addImageToCanvas(ev.target.result, anchor.left, anchor.top);
         };
         reader.readAsDataURL(blob);
         handled = true;
       }
     }
-    if (handled) e.preventDefault();
+    const isInternalPaste = text === INTERNAL_CLIPBOARD_MARKER || text.indexOf(INTERNAL_CLIPBOARD_MARKER + '\n') === 0;
+    if (!handled && text && !isInternalPaste) {
+      recordUndo();
+      const anchor = getPasteAnchor(300);
+      addTextToCanvas(plainTextToHTML(text), anchor.left, anchor.top);
+      handled = true;
+    }
+    if (!handled && isInternalPaste && loadInternalClipboardFromText(text)) {
+      handled = pasteFromClipboard();
+    }
+    if (handled) {
+      window._onefilePasteHandled = true;
+      e.preventDefault();
+    }
   });
 
   window.addEventListener('beforeunload', function(e) {
