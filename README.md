@@ -2,46 +2,53 @@
 
 **Portable Whiteboard, in a Single File.**
 
-An infinite canvas that lives entirely in a single HTML file. No install, no account, no server. Open it in a browser and start thinking.
+Onefile is a tiny infinite-canvas whiteboard that lives entirely inside one HTML file. No install, no account, no server, and no build step. Open `index.html` in a browser and start thinking.
 
-## Features
-- Infinite canvas — pan, zoom, drag, resize
-- Text, images, and mindmap nodes
-- Mindmap trees — Tab for child, Enter for sibling, auto-connectors, clean-up layout
-- Group / ungroup objects
-- Undo / redo (Ctrl+Z / Ctrl+Y)
-- Copy, cut, paste — including full mindmap subtrees
-- Save your canvas — produces a new standalone `.html` file with everything embedded
-- Lock mode (view-only) for presenting
-- Keyboard shortcuts for everything
+Live version: https://heinhtetmedia.github.io/onefile/
 
-## How to use
-1. Download `index.html`
-2. Open it in any browser
-3. Start adding text, images, or mindmap nodes
-4. Press **Ctrl+S** (or **⌘S** on Mac) to save your canvas as a new standalone file
+## What It Does
 
-## Keyboard shortcuts
-| Key | Action |
-|-----|--------|
+- Infinite canvas with pan, zoom, fit-to-content, drag, resize, and grouping
+- Text boxes with direct paste from outside sources
+- Image paste/upload with embedded image data
+- Mindmap nodes with child/sibling creation, auto-connectors, clean-up layout, subtree copy/cut/paste, and mobile-friendly action buttons
+- Mobile touch support for pan, pinch zoom, double-tap editing, and drag-select mode
+- Undo/redo, view-only mode, and a shortcuts/help panel
+- Save/export to a new standalone `.html` file with the current canvas embedded
+- Unsaved-change indicator beside the document title
+
+## Use It
+
+1. Open the live version or download `index.html`.
+2. Add text, images, or mindmap nodes.
+3. Use **Ctrl/⌘ + S** or the save button to export your board as a standalone HTML file.
+4. Reopen that saved HTML file anytime. It carries the app and your content together.
+
+## Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
 | `T` | Add text |
 | `I` | Add image |
-| `M` | Add mindmap root node |
-| `Tab` | Add child node (mindmap) |
-| `Enter` | Add sibling node (mindmap) |
-| `Space` + drag | Pan canvas |
-| `Ctrl/⌘ + S` | Save canvas |
-| `Ctrl/⌘ + Z` | Undo |
-| `Ctrl/⌘ + Y` | Redo |
-| `Ctrl/⌘ + G` | Group / ungroup selected |
-| `Ctrl/⌘ + C` | Copy |
-| `Ctrl/⌘ + X` | Cut |
-| `Ctrl/⌘ + V` | Paste |
+| `M` | Add mindmap root |
+| `Tab` | Add mindmap child |
+| `Enter` | Add mindmap sibling |
+| `Shift + Enter` | Line break while editing a mindmap node |
+| `Shift + click` | Multi-select |
+| `Shift + drag` | Drag-select on desktop |
+| `Space + drag` | Temporary pan |
+| `Ctrl/⌘ + S` | Save Onefile |
+| `Ctrl/⌘ + Z` / `Ctrl/⌘ + Y` | Undo / redo |
+| `Ctrl/⌘ + C` / `X` / `V` | Copy / cut / paste |
 | `Ctrl/⌘ + A` | Select all |
 | `Delete` | Delete selected |
+| `Ctrl/⌘ + G` | Group / ungroup |
 | `1` | Fit to content |
 
-## License
-MIT — free to use, modify, and share.
+## Repository
 
-Created by [Hein Htet](https://www.linkedin.com/in/heinhtetthemarketer/)
+The published app intentionally keeps the repository small: `index.html`, `README.md`, and `LICENSE`.
+
+## License
+
+MIT. Created by [Hein Htet](https://www.linkedin.com/in/heinhtetthemarketer/).

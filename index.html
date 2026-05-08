@@ -299,6 +299,16 @@ body { background-color: #f8f9fb; }
 }
 #filename-display:hover { background: #f1f3f4; border-color: #e8eaed; }
 #filename-display.tooltip:hover { overflow: visible; }
+#filename-display.is-dirty::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+  vertical-align: middle;
+}
 #filename-input {
   font-size: 16px; font-weight: 500; color: #4a5568; padding: 4px 10px; border-radius: 6px;
   border: 1px solid #1877F2; outline: none; background: white;
@@ -332,7 +342,7 @@ body { background-color: #f8f9fb; }
 }
 
 #selection-box {
-  position: absolute; border: 1px dashed #1a1a1a;
+  position: fixed; border: 1px dashed #1a1a1a;
   background-color: rgba(66,133,244,0.1);
   pointer-events: none; z-index: 50; display: none;
 }
@@ -746,6 +756,7 @@ function pushUndo(snapshot) {
   if (undoStack.length > MAX_UNDO_STEPS) undoStack.shift();
   redoStack = [];
   dirty = true;
+  updateDirtyIndicator();
 }
 
 function recordUndo() {
@@ -767,6 +778,7 @@ function undo() {
   redoStack.push(captureState());
   applyState(target);
   dirty = true;
+  updateDirtyIndicator();
 }
 
 function redo() {
@@ -775,6 +787,13 @@ function redo() {
   undoStack.push(captureState());
   applyState(target);
   dirty = true;
+  updateDirtyIndicator();
+}
+
+function updateDirtyIndicator() {
+  const display = $('filename-display');
+  if (display) display.classList.toggle('is-dirty', dirty);
+  document.title = (dirty ? '• ' : '') + currentFilename;
 }
 
 // ============ ELEMENT FACTORIES ============
@@ -963,6 +982,10 @@ function startEditingMind(el) {
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(r);
+  requestAnimationFrame(function() {
+    updateMindBtn();
+    requestAnimationFrame(updateMindBtn);
+  });
 
   let finished = false;
   const onInput = function() {
@@ -1010,6 +1033,7 @@ function startEditingMind(el) {
       const pos = getNewChildPosition(el);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, el.id);
       renderConnectors();
+      ensureCanvasObjectInView(child);
       startEditingMind(child);
       return;
     }
@@ -1037,6 +1061,7 @@ function startEditingMind(el) {
       recordUndo();
       const sib = addMindmapToCanvas('', parseFloat(el.style.left), parseFloat(el.style.top) + el.offsetHeight + 16, undefined, pid);
       renderConnectors();
+      ensureCanvasObjectInView(sib);
       startEditingMind(sib);
       return;
     }
@@ -1349,6 +1374,41 @@ function updateMindBtn() {
   }
 }
 
+function ensureCanvasObjectInView(obj, padding) {
+  if (!obj) return;
+  padding = padding === undefined ? 28 : padding;
+  const vv = window.visualViewport;
+  let left = vv ? vv.offsetLeft : 0;
+  let top = vv ? vv.offsetTop : 0;
+  let right = left + (vv ? vv.width : window.innerWidth);
+  let bottom = top + (vv ? vv.height : window.innerHeight);
+  const isMobileLayout = window.matchMedia('(hover: none) and (max-width: 700px)').matches;
+  if (isMobileLayout) {
+    const topBar = $('app-top-bar');
+    const bottomControls = [$('floating-sidebar'), $('bottom-nav'), $('mobile-select-btn')]
+      .filter(function(el) { return el && getComputedStyle(el).display !== 'none'; });
+    if (topBar) top = Math.max(top, topBar.getBoundingClientRect().bottom);
+    bottomControls.forEach(function(el) {
+      bottom = Math.min(bottom, el.getBoundingClientRect().top);
+    });
+  }
+  left += padding;
+  top += padding;
+  right -= padding;
+  bottom -= padding;
+  const r = obj.getBoundingClientRect();
+  let dx = 0, dy = 0;
+  if (r.right > right) dx = right - r.right;
+  if (r.left + dx < left) dx += left - (r.left + dx);
+  if (r.bottom > bottom) dy = bottom - r.bottom;
+  if (r.top + dy < top) dy += top - (r.top + dy);
+  if (dx || dy) {
+    panX += dx;
+    panY += dy;
+    updateCanvasTransform();
+  }
+}
+
 function updateSelectionToolbar() {
   const tb = $('selection-toolbar');
   if (!tb) return;
@@ -1462,12 +1522,14 @@ function fitToContent() {
 
 function startDragSelection(e) {
   isSelecting = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
   const c = screenToCanvas(e.clientX, e.clientY);
   selectionStartX = c.x;
   selectionStartY = c.y;
   const box = $('selection-box');
-  box.style.left = (selectionStartX * scale + panX) + 'px';
-  box.style.top  = (selectionStartY * scale + panY) + 'px';
+  box.style.left = dragStartX + 'px';
+  box.style.top  = dragStartY + 'px';
   box.style.width = '0px';
   box.style.height = '0px';
   box.style.display = 'block';
@@ -1476,15 +1538,11 @@ function startDragSelection(e) {
 function updateDragSelection(e) {
   if (!isSelecting) return;
   const c = screenToCanvas(e.clientX, e.clientY);
-  const left = Math.min(selectionStartX, c.x);
-  const top  = Math.min(selectionStartY, c.y);
-  const w = Math.abs(c.x - selectionStartX);
-  const h = Math.abs(c.y - selectionStartY);
   const box = $('selection-box');
-  box.style.left = (left * scale + panX) + 'px';
-  box.style.top  = (top  * scale + panY) + 'px';
-  box.style.width  = (w * scale) + 'px';
-  box.style.height = (h * scale) + 'px';
+  box.style.left = Math.min(dragStartX, e.clientX) + 'px';
+  box.style.top  = Math.min(dragStartY, e.clientY) + 'px';
+  box.style.width  = Math.abs(e.clientX - dragStartX) + 'px';
+  box.style.height = Math.abs(e.clientY - dragStartY) + 'px';
 }
 
 function endDragSelection(e) {
@@ -1890,6 +1948,7 @@ function setTouchSelectMode(active) {
 function buildStaticBodyHTML(state) {
   const fname = escapeHTML(state.filename || 'onefile');
   const topBar = $('app-top-bar').outerHTML
+    .replace(/\bis-dirty\b/g, '')
     .replace(/(<span id="filename-display"[^>]*>)[^<]*(<\/span>)/, '$1' + fname + '$2')
     .replace(/(<input id="filename-input"[^>]*value=")[^"]*(")/, '$1' + fname + '$2');
   return [
@@ -1925,6 +1984,7 @@ function saveCanvas() {
     'generateId','screenToCanvas',
     'captureObject','captureState','restoreObject','applyState',
     'pushUndo','recordUndo','beginGesture','commitGesture','undo','redo',
+    'updateDirtyIndicator',
     'addResizeHandles','revertHandleToOrigin',
     'showImageMenu','hideImageMenu','copyImageToClipboard','saveImageAs',
     'createImageElement','createTextElement','createGroupElement',
@@ -1932,7 +1992,7 @@ function saveCanvas() {
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
     'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getNewChildPosition',
-    'reflowMindTree','updateMindBtn','updateSelectionToolbar','initDragInitials',
+    'reflowMindTree','updateMindBtn','updateSelectionToolbar','ensureCanvasObjectInView','initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
@@ -2008,6 +2068,7 @@ fnSrc +
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   dirty = false;
+  updateDirtyIndicator();
 }
 
 function rebuildEmbeddedState() {
@@ -2251,13 +2312,15 @@ function setupFilenameBar() {
     input.select();
   });
   const commit = function() {
+    const prev = currentFilename;
     const val = (input.value.trim().replace(/\.html$/i, '')) || 'Untitled OneFile';
     currentFilename = val;
     display.textContent = val;
     input.value = val;
     display.style.display = '';
     input.style.display = 'none';
-    document.title = val;
+    if (val !== prev) dirty = true;
+    updateDirtyIndicator();
   };
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', function(e) {
@@ -2542,6 +2605,7 @@ function setupEventListeners() {
       const pos = getNewChildPosition(mindSel);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, mindSel.id);
       renderConnectors();
+      ensureCanvasObjectInView(child);
       startEditingMind(child);
     });
   });
@@ -2554,6 +2618,7 @@ function setupEventListeners() {
       recordUndo();
       const sib = addMindmapToCanvas('', parseFloat(mindSel.style.left), parseFloat(mindSel.style.top) + mindSel.offsetHeight + 16, undefined, pid);
       renderConnectors();
+      ensureCanvasObjectInView(sib);
       startEditingMind(sib);
     });
   });
@@ -2816,6 +2881,7 @@ function setupEventListeners() {
         const pos = getNewChildPosition(selectedMind);
         const child = addMindmapToCanvas('', pos.left, pos.top, undefined, selectedMind.id);
         renderConnectors();
+        ensureCanvasObjectInView(child);
         startEditingMind(child);
         return;
       }
@@ -2825,6 +2891,7 @@ function setupEventListeners() {
         recordUndo();
         const sib = addMindmapToCanvas('', parseFloat(selectedMind.style.left), parseFloat(selectedMind.style.top) + selectedMind.offsetHeight + 16, undefined, pid);
         renderConnectors();
+        ensureCanvasObjectInView(sib);
         startEditingMind(sib);
         return;
       }
@@ -3067,6 +3134,7 @@ function init() {
   setupPlatformTooltips();
   buildShortcutsPanel();
   setupFilenameBar();
+  updateDirtyIndicator();
   setupTouchSupport();
   try { document.execCommand('defaultParagraphSeparator', false, 'br'); } catch (_) {}
 }
