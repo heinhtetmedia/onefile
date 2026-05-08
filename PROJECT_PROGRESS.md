@@ -28,6 +28,7 @@ Recent working areas:
 - Mobile mindmap action bar appears below the selected node instead of off to the right.
 - Mobile tap-away commits add-text, mindmap node text, and document rename edits.
 - Fit-to-content now centers content inside the usable mobile viewport, excluding the top bar and bottom controls.
+- iOS text and mindmap creation now request focus synchronously so the keyboard opens when adding text or editing newly created mindmap nodes.
 
 ## Deferred Decisions
 

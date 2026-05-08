@@ -956,7 +956,7 @@ function startEditingMind(el) {
   updateSelectionToolbar();
   el.classList.add('mind-edit-mode');
   label.contentEditable = 'true';
-  label.focus();
+  try { label.focus({ preventScroll: true }); } catch (_) { label.focus(); }
   const r = document.createRange();
   r.selectNodeContents(label);
   r.collapse(false);
@@ -972,6 +972,7 @@ function startEditingMind(el) {
   const finish = function(removeIfEmpty) {
     if (finished) return;
     finished = true;
+    delete el._finishMindEdit;
     label.contentEditable = 'false';
     el.classList.remove('mind-edit-mode');
     isEditing = false;
@@ -991,6 +992,7 @@ function startEditingMind(el) {
     updateMindBtn();
     updateSelectionToolbar();
   };
+  el._finishMindEdit = finish;
   const onOutsideTouch = function(e) {
     if (!e.target.closest('.mind-object') && !e.target.closest('#mind-action-bar')) finish(true);
   };
@@ -1008,7 +1010,7 @@ function startEditingMind(el) {
       const pos = getNewChildPosition(el);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, el.id);
       renderConnectors();
-      setTimeout(function() { startEditingMind(child); }, 0);
+      startEditingMind(child);
       return;
     }
     if (e.key === 'Tab' && e.shiftKey) {
@@ -1035,7 +1037,7 @@ function startEditingMind(el) {
       recordUndo();
       const sib = addMindmapToCanvas('', parseFloat(el.style.left), parseFloat(el.style.top) + el.offsetHeight + 16, undefined, pid);
       renderConnectors();
-      setTimeout(function() { startEditingMind(sib); }, 0);
+      startEditingMind(sib);
       return;
     }
     e.stopPropagation();
@@ -1814,7 +1816,13 @@ function showTextDialog(callback, position) {
     dlg.style.transform = 'translate(-50%, -50%)';
   }
   dlg._callback = callback;
-  setTimeout(() => inp.focus(), 0);
+  try { inp.focus({ preventScroll: true }); } catch (_) { inp.focus(); }
+  try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
+  setTimeout(function() {
+    if (document.activeElement !== inp) {
+      try { inp.focus({ preventScroll: true }); } catch (_) { inp.focus(); }
+    }
+  }, 60);
 }
 
 function hideTextDialog() {
@@ -2506,8 +2514,14 @@ function setupEventListeners() {
   }
   function afterMindEdit(action) {
     if (!isEditing) { action(); return; }
-    const activeMind = document.querySelector('.mind-edit-mode .mind-label');
-    if (activeMind) activeMind.blur();
+    const activeMind = document.querySelector('.mind-edit-mode');
+    if (activeMind && typeof activeMind._finishMindEdit === 'function') {
+      activeMind._finishMindEdit(true);
+      action();
+      return;
+    }
+    const activeLabel = document.querySelector('.mind-edit-mode .mind-label');
+    if (activeLabel) activeLabel.blur();
     setTimeout(action, 80);
   }
   $('mind-cleanup-btn').addEventListener('click', function() {
@@ -2528,7 +2542,7 @@ function setupEventListeners() {
       const pos = getNewChildPosition(mindSel);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, mindSel.id);
       renderConnectors();
-      setTimeout(function() { startEditingMind(child); }, 0);
+      startEditingMind(child);
     });
   });
   $('mind-sibling-btn').addEventListener('click', function() {
@@ -2540,7 +2554,7 @@ function setupEventListeners() {
       recordUndo();
       const sib = addMindmapToCanvas('', parseFloat(mindSel.style.left), parseFloat(mindSel.style.top) + mindSel.offsetHeight + 16, undefined, pid);
       renderConnectors();
-      setTimeout(function() { startEditingMind(sib); }, 0);
+      startEditingMind(sib);
     });
   });
   $('sel-delete-btn').addEventListener('click', function() {
@@ -2802,7 +2816,7 @@ function setupEventListeners() {
         const pos = getNewChildPosition(selectedMind);
         const child = addMindmapToCanvas('', pos.left, pos.top, undefined, selectedMind.id);
         renderConnectors();
-        setTimeout(function() { startEditingMind(child); }, 0);
+        startEditingMind(child);
         return;
       }
       if (e.key === 'Enter') {
@@ -2811,7 +2825,7 @@ function setupEventListeners() {
         recordUndo();
         const sib = addMindmapToCanvas('', parseFloat(selectedMind.style.left), parseFloat(selectedMind.style.top) + selectedMind.offsetHeight + 16, undefined, pid);
         renderConnectors();
-        setTimeout(function() { startEditingMind(sib); }, 0);
+        startEditingMind(sib);
         return;
       }
     }
