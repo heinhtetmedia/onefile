@@ -1,6 +1,6 @@
 # Onefile Project Progress
 
-Last updated: 2026-05-07
+Last updated: 2026-05-08
 
 ## Current Status
 
@@ -22,6 +22,12 @@ Recent working areas:
 - Mobile supports double-tap edit for text and mindmap nodes, plus a bottom-left touch select-mode button for drag-select.
 - Shortcuts popup is grouped, wider on desktop, and collapses to one column on mobile.
 - Tooltips use simple bracketed shortcut text like `Add text (T)` after rejecting the keycap-style tooltip treatment as visually noisy.
+- Mobile layout now moves the object toolbar to a compact bottom-left horizontal bar and the save/fit/zoom controls to a compact bottom-right vertical bar.
+- Mobile hover tooltips are disabled, since touch has no useful hover state.
+- Shortcuts help button changes to an `X` while the popup is open so it remains closable even after scrolling.
+- Mobile mindmap action bar appears below the selected node instead of off to the right.
+- Mobile tap-away commits add-text, mindmap node text, and document rename edits.
+- Fit-to-content now centers content inside the usable mobile viewport, excluding the top bar and bottom controls.
 
 ## Deferred Decisions
 
