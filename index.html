@@ -219,31 +219,32 @@ body { background-color: #f8f9fb; }
 
 #text-dialog {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  background-color: #ffffff; padding: 10px;
+  background: rgba(255,255,255,0.9); padding: 12px 14px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   z-index: 200; display: none;
   width: 300px; min-width: 50px; min-height: 25px; height: auto;
-  border-radius: 4px; overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  border: 1px solid #e0e0e0;
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.1);
+  border: 1px solid rgba(226,232,240,0.9);
 }
 #text-dialog textarea {
   width: 100%; height: auto; min-height: 25px;
   padding: 0; margin-bottom: 0;
   resize: none; font-family: Calibri, sans-serif;
-  font-size: 16px; font-weight: 500; line-height: 1.4;
+  font-size: 16px; font-weight: 500; line-height: 1.45;
   background: transparent; border: none; outline: none;
-  color: #000000;
-  -webkit-text-stroke: 0.35px;
+  color: #2c2c2c;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
   white-space: pre-wrap; overflow-y: hidden; box-sizing: border-box;
 }
+#text-dialog textarea::placeholder { color: #94a3b8; }
 #text-dialog-buttons { display: none; }
 @media (hover: none) {
   #text-dialog-buttons { display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end; }
-  #text-dialog-buttons button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
-  #cancel-text-btn { background: #f1f5f9; color: #475569; }
-  #add-text-dialog-btn { background: #1877F2; color: white; }
+  #text-dialog-buttons button { padding: 6px 14px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  #cancel-text-btn { background: rgba(241,245,249,0.9); color: #64748b; }
+  #add-text-dialog-btn { background: #334155; color: white; }
 }
 
 .keyboard-shortcuts {
@@ -487,13 +488,21 @@ body { background-color: #f8f9fb; }
   border-radius: 10px; padding: 4px;
   display: flex; align-items: center; gap: 2px;
 }
-#sel-delete-btn {
+#sel-delete-btn,
+#sel-lock-btn {
   height: 32px; width: 32px; padding: 0; border: none; border-radius: 7px;
   background: transparent; color: #94a3b8; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, color 0.12s;
 }
+#sel-lock-btn { display: none; }
+.selection-toolbar-divider {
+  width: 1px; height: 20px; background: rgba(15,23,42,0.1);
+  margin: 0 4px; flex-shrink: 0; display: none;
+}
 #sel-delete-btn:hover { background: #fee2e2; color: #dc2626; }
+#sel-lock-btn:hover,
+#sel-lock-btn.active { background: rgba(241,245,249,0.9); color: #334155; }
 </style>
 </head>
 <body>
@@ -553,6 +562,11 @@ body { background-color: #f8f9fb; }
   <button id="mind-cleanup-btn" class="tooltip" data-tooltip="Clean up layout" aria-label="Clean up mindmap layout">Clean up</button>
 </div>
 <div id="selection-toolbar" style="display:none">
+  <button id="sel-lock-btn" class="tooltip" data-tooltip="Lock position" aria-label="Lock image position">
+    <svg class="icon lock-open-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2Zm0 12H6V10h12v10Zm-6-3a2 2 0 0 0 2-2c0-1.11-.89-2-2-2a2 2 0 0 0-2 2c0 1.11.9 2 2 2Z"/></svg>
+    <svg class="icon lock-closed-icon" viewBox="0 0 24 24" style="display:none"><path fill="currentColor" d="M12 17a2 2 0 0 0 2-2c0-1.11-.89-2-2-2a2 2 0 0 0-2 2c0 1.11.9 2 2 2Zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2ZM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6Z"/></svg>
+  </button>
+  <div id="selection-lock-divider" class="selection-toolbar-divider"></div>
   <button id="sel-delete-btn" class="tooltip" data-tooltip="Delete" aria-label="Delete selected">
     <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
   </button>
@@ -579,7 +593,7 @@ body { background-color: #f8f9fb; }
   <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h6v2H5v4H3V3zm12 0h6v6h-2V5h-4V3zM3 15h2v4h4v2H3v-6zm16 0h2v6h-6v-2h4v-4zM8 8h8v8H8V8zm2 2v4h4v-4h-4z"/></svg>
 </button>
 <div id="text-dialog">
-  <textarea id="text-input" placeholder="Enter text (Shift+Enter for line breaks)" style="height: 45px;"></textarea>
+  <textarea id="text-input" placeholder="Add text" style="height: 45px;"></textarea>
   <div id="text-dialog-buttons">
     <button id="cancel-text-btn">Cancel</button>
     <button id="add-text-dialog-btn">Add</button>
@@ -664,6 +678,7 @@ function captureObject(obj) {
   if (out.type === 'image') {
     const img = obj.querySelector('img');
     out.src = img ? img.src : '';
+    if (obj.dataset.positionLocked === 'true') out.positionLocked = true;
   } else if (out.type === 'text') {
     const tc = obj.querySelector('.text-content');
     out.text = tc ? tc.innerHTML : '';
@@ -714,6 +729,7 @@ function restoreObject(state, parent) {
     if (state.type === 'text') el.style.maxWidth = 'none';
   }
   if (state.height) el.style.height = state.height + 'px';
+  if (state.type === 'image' && state.positionLocked) el.dataset.positionLocked = 'true';
   parent.appendChild(el);
   if (state.origRect) {
     el._origRect = { ...state.origRect };
@@ -1059,7 +1075,8 @@ function startEditingMind(el) {
       finish();
       const pid = el.dataset.parentId || undefined;
       recordUndo();
-      const sib = addMindmapToCanvas('', parseFloat(el.style.left), parseFloat(el.style.top) + el.offsetHeight + 16, undefined, pid);
+      const pos = getNewSiblingPosition(el);
+      const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
       renderConnectors();
       ensureCanvasObjectInView(sib);
       startEditingMind(sib);
@@ -1320,6 +1337,18 @@ function getNewChildPosition(parentEl) {
   };
 }
 
+function getNewSiblingPosition(nodeEl) {
+  const pid = nodeEl.dataset.parentId;
+  if (pid) {
+    const parentEl = document.getElementById(pid);
+    if (parentEl) return getNewChildPosition(parentEl);
+  }
+  return {
+    left: parseFloat(nodeEl.style.left) || 0,
+    top: (parseFloat(nodeEl.style.top) || 0) + nodeEl.offsetHeight + 16
+  };
+}
+
 function reflowMindTree(rootEl) {
   const H_GAP = 80, V_GAP = 16;
   const wrapper = $('canvas-wrapper');
@@ -1411,8 +1440,23 @@ function ensureCanvasObjectInView(obj, padding) {
 
 function updateSelectionToolbar() {
   const tb = $('selection-toolbar');
+  const lockBtn = $('sel-lock-btn');
+  const lockDivider = $('selection-lock-divider');
   if (!tb) return;
   if (selectedObjects.length === 0 || isEditing) { tb.style.display = 'none'; return; }
+  const singleImage = selectedObjects.length === 1 && selectedObjects[0].classList.contains('image-object') ? selectedObjects[0] : null;
+  if (lockBtn) {
+    const locked = !!singleImage && singleImage.dataset.positionLocked === 'true';
+    lockBtn.style.display = singleImage ? 'flex' : 'none';
+    lockBtn.classList.toggle('active', locked);
+    const openIcon = lockBtn.querySelector('.lock-open-icon');
+    const closedIcon = lockBtn.querySelector('.lock-closed-icon');
+    if (openIcon) openIcon.style.display = locked ? 'none' : 'block';
+    if (closedIcon) closedIcon.style.display = locked ? 'block' : 'none';
+    lockBtn.setAttribute('aria-label', locked ? 'Unlock image position' : 'Lock image position');
+    lockBtn.setAttribute('data-tooltip', locked ? 'Unlock position' : 'Lock position');
+  }
+  if (lockDivider) lockDivider.style.display = singleImage ? 'block' : 'none';
   let minX = Infinity, minY = Infinity, maxX = -Infinity;
   selectedObjects.forEach(function(o) {
     const r = o.getBoundingClientRect();
@@ -1990,7 +2034,7 @@ function saveCanvas() {
     'createMindmapElement','addMindmapToCanvas','startEditingMind',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
-    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getNewChildPosition',
+    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getNewChildPosition','getNewSiblingPosition',
     'reflowMindTree','updateMindBtn','updateSelectionToolbar','ensureCanvasObjectInView','initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
@@ -2198,6 +2242,7 @@ function applyDragMove(clientX, clientY) {
   const dy = (clientY - dragStartY) / scale;
   const seen = new Set();
   selectedObjects.forEach(function(o) {
+    if (o.classList.contains('image-object') && o.dataset.positionLocked === 'true') return;
     if (o._initialLeft !== undefined) {
       o.style.left = (o._initialLeft + dx) + 'px';
       o.style.top  = (o._initialTop  + dy) + 'px';
@@ -2398,6 +2443,10 @@ function setupTouchSupport() {
       dragStartX = t.clientX; dragStartY = t.clientY;
       beginGesture();
     } else if (obj && !isViewOnly()) {
+      if (obj.classList.contains('image-object') && obj.dataset.positionLocked === 'true') {
+        if (!selectedObjects.includes(obj)) { clearSelection(); selectObject(obj); }
+        return;
+      }
       isDragging = true;
       if (!selectedObjects.includes(obj)) { clearSelection(); selectObject(obj); }
       initDragInitials();
@@ -2615,11 +2664,22 @@ function setupEventListeners() {
       if (!mindSel) return;
       const pid = mindSel.dataset.parentId || undefined;
       recordUndo();
-      const sib = addMindmapToCanvas('', parseFloat(mindSel.style.left), parseFloat(mindSel.style.top) + mindSel.offsetHeight + 16, undefined, pid);
+      const pos = getNewSiblingPosition(mindSel);
+      const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
       renderConnectors();
       ensureCanvasObjectInView(sib);
       startEditingMind(sib);
     });
+  });
+  $('sel-lock-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (isViewOnly()) return;
+    const img = selectedObjects.length === 1 && selectedObjects[0].classList.contains('image-object') ? selectedObjects[0] : null;
+    if (!img) return;
+    recordUndo();
+    if (img.dataset.positionLocked === 'true') delete img.dataset.positionLocked;
+    else img.dataset.positionLocked = 'true';
+    updateSelectionToolbar();
   });
   $('sel-delete-btn').addEventListener('click', function() {
     if (isViewOnly() || selectedObjects.length === 0) return;
@@ -2763,6 +2823,15 @@ function setupEventListeners() {
       beginGesture();
     } else if (target) {
       e.preventDefault();
+      if (target.classList.contains('image-object') && target.dataset.positionLocked === 'true') {
+        if (e.shiftKey) {
+          selectObject(target, true);
+        } else if (!selectedObjects.includes(target)) {
+          clearSelection();
+          selectObject(target);
+        }
+        return;
+      }
       isDragging = true;
       if (e.shiftKey) {
         selectObject(target, true);
@@ -2888,7 +2957,8 @@ function setupEventListeners() {
         e.preventDefault();
         const pid = selectedMind.dataset.parentId || undefined;
         recordUndo();
-        const sib = addMindmapToCanvas('', parseFloat(selectedMind.style.left), parseFloat(selectedMind.style.top) + selectedMind.offsetHeight + 16, undefined, pid);
+        const pos = getNewSiblingPosition(selectedMind);
+        const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
         renderConnectors();
         ensureCanvasObjectInView(sib);
         startEditingMind(sib);

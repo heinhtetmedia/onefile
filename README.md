@@ -10,8 +10,8 @@ Live version: https://heinhtetmedia.github.io/onefile/
 
 - Infinite canvas with pan, zoom, fit-to-content, drag, resize, and grouping
 - Text boxes with direct paste from outside sources
-- Image paste/upload with embedded image data
-- Mindmap nodes with child/sibling creation, auto-connectors, clean-up layout, subtree copy/cut/paste, and mobile-friendly action buttons
+- Image paste/upload with embedded image data and image-only position lock
+- Mindmap nodes with child/sibling creation, append-to-bottom sibling placement, auto-connectors, clean-up layout, subtree copy/cut/paste, and mobile-friendly action buttons
 - Mobile touch support for pan, pinch zoom, double-tap editing, and drag-select mode
 - Undo/redo, view-only mode, and a shortcuts/help panel
 - Save/export to a new standalone `.html` file with the current canvas embedded
@@ -44,6 +44,14 @@ Live version: https://heinhtetmedia.github.io/onefile/
 | `Delete` | Delete selected |
 | `Ctrl/⌘ + G` | Group / ungroup |
 | `1` | Fit to content |
+
+## Latest Updates
+
+- Mobile drag-select now tracks the actual touch position.
+- Fit-to-content uses the stable screen viewport on mobile.
+- Mindmap sibling creation appends below existing siblings to avoid overlap.
+- Image selection has a position lock beside delete, with locked/unlocked icon states.
+- The add-text dialog now uses the same softer neutral UI style as the rest of the app.
 
 ## Repository
 
