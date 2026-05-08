@@ -1484,11 +1484,10 @@ function fitToContent() {
     maxY = Math.max(maxY, top + h);
   });
   if (!isFinite(minX)) { centerCanvas(); return; }
-  const vv = window.visualViewport;
-  const viewportLeft = vv ? vv.offsetLeft : 0;
-  const viewportTop = vv ? vv.offsetTop : 0;
-  const viewportW = vv ? vv.width : window.innerWidth;
-  const viewportH = vv ? vv.height : window.innerHeight;
+  const viewportLeft = 0;
+  const viewportTop = 0;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
   const isMobileLayout = window.matchMedia('(hover: none) and (max-width: 700px)').matches;
   let fitLeft = viewportLeft;
   let fitTop = viewportTop;
