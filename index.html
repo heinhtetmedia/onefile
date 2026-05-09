@@ -1144,10 +1144,9 @@ function createMindmapElement(text, id, parentId) {
 function addMindmapToCanvas(text, left, top, id, parentId) {
   const wrapper = $('canvas-wrapper');
   const wrap = createMindmapElement(text, id, parentId);
-  const cx = (window.innerWidth / 2 - panX) / scale;
-  const cy = (window.innerHeight / 2 - panY) / scale;
-  wrap.style.left = (left !== undefined ? left : cx - 60) + 'px';
-  wrap.style.top  = (top  !== undefined ? top  : cy - 20) + 'px';
+  const defaultPos = getDefaultCreatePoint(120, 40);
+  wrap.style.left = (left !== undefined ? left : defaultPos.left) + 'px';
+  wrap.style.top  = (top  !== undefined ? top  : defaultPos.top) + 'px';
   wrapper.appendChild(wrap);
   wrap._origRect = {
     left: parseFloat(wrap.style.left) || 0,
@@ -1326,10 +1325,9 @@ function addImageToCanvas(src, left, top, width, height, id, parent) {
         wrap.style.height = h + 'px';
       }
       if (!havePos) {
-        const cx = (window.innerWidth / 2 - panX) / scale;
-        const cy = (window.innerHeight / 2 - panY) / scale;
-        wrap.style.left = (cx - w / 2 + (left || 0)) + 'px';
-        wrap.style.top = (cy - h / 2 + (top || 0)) + 'px';
+        const defaultPos = getDefaultCreatePoint(w, h);
+        wrap.style.left = (defaultPos.left + (left || 0)) + 'px';
+        wrap.style.top = (defaultPos.top + (top || 0)) + 'px';
       }
       recordOrig();
     };
@@ -1344,10 +1342,9 @@ function addImageToCanvas(src, left, top, width, height, id, parent) {
 function addTextToCanvas(textHTML, left, top, width, height, id, parent) {
   parent = parent || $('canvas-wrapper');
   const wrap = createTextElement(textHTML, id);
-  const cx = (window.innerWidth / 2 - panX) / scale;
-  const cy = (window.innerHeight / 2 - panY) / scale;
-  wrap.style.left = (left !== undefined ? left : cx - 150) + 'px';
-  wrap.style.top  = (top  !== undefined ? top  : cy - 20)  + 'px';
+  const defaultPos = getDefaultCreatePoint(300, 40);
+  wrap.style.left = (left !== undefined ? left : defaultPos.left) + 'px';
+  wrap.style.top  = (top  !== undefined ? top  : defaultPos.top)  + 'px';
   if (width) wrap.style.width = width + 'px';
   if (height) wrap.style.height = height + 'px';
   parent.appendChild(wrap);
@@ -2375,6 +2372,15 @@ function getPasteAnchor(objectWidth) {
   };
 }
 
+function getDefaultCreatePoint(objectWidth, objectHeight, offset) {
+  const isMobileLayout = window.matchMedia('(hover: none) and (max-width: 700px)').matches;
+  const viewportY = isMobileLayout ? window.innerHeight * 0.3 : window.innerHeight / 2;
+  return {
+    left: (window.innerWidth / 2 - panX) / scale - (objectWidth || 0) / 2 + (offset || 0),
+    top: (viewportY - panY) / scale - (isMobileLayout ? 0 : (objectHeight || 0) / 2) + (offset || 0)
+  };
+}
+
 // ============ TEXT EDITING ============
 
 function startEditingText(textElement) {
@@ -2697,7 +2703,7 @@ function saveCanvas() {
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
     'mindNodePlainText','mindSubtreeToOutline','selectionToMindOutline','makeOnefileClipboardHTML','onefilePayloadFromHTML','parseOutlineText','createMindmapFromOutline','detachMindSubtree','detachSelectedMindSubtrees','connectMindAsChild','setMindParentAsChild','connectMindSelectionAsChildren','beginMindConnectDrag','updateMindConnectLine','hideMindConnectLine','finishMindConnectDrag','updateDraggedMindBranchSides',
-    'copySelection','cutSelection','reIdRecursive','collectMindIdMap','remapClipboardItem','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor',
+    'copySelection','cutSelection','reIdRecursive','collectMindIdMap','remapClipboardItem','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor','getDefaultCreatePoint',
     'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML','selectEditableContents','placeCaretAtEnd','selectionWithin','normalizeFontSize','applyEditFormat','updateFormatToolbarPosition','createFormatToolbar',
     'setViewOnly','isViewOnly','setTouchSelectMode',
     'applyDragMove','applyResizeMove','getTextSideResizeDirection','setupFilenameBar','setupTouchSupport',
@@ -3282,9 +3288,8 @@ function setupEventListeners() {
       const reader = new FileReader();
       reader.onload = function(ev) {
         const offset = i * 20;
-        const cx = (window.innerWidth / 2 - panX) / scale;
-        const cy = (window.innerHeight / 2 - panY) / scale;
-        addImageToCanvas(ev.target.result, cx - 150 + offset, cy - 150 + offset);
+        const pos = getDefaultCreatePoint(300, 300, offset);
+        addImageToCanvas(ev.target.result, pos.left, pos.top);
       };
       reader.readAsDataURL(file);
     });
