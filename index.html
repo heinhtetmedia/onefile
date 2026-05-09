@@ -205,14 +205,15 @@ body { background-color: #f8f9fb; }
 }
 .mind-connect-handle::after {
   content: "";
-  position: absolute; left: 10px; top: 10px;
-  width: 8px; height: 8px; border-radius: 999px;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--ui-inv-scale, 1));
+  width: 10px; height: 10px; border-radius: 999px;
   background: #94a3b8; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(15,23,42,0.18);
+  transform-origin: center;
 }
 .mind-object.selected > .mind-connect-handle { display: block; }
 .mind-edit-mode > .mind-connect-handle { display: none !important; }
-.mind-connect-handle.to-parent { top: -14px; left: 10px; }
-.mind-connect-handle.as-parent { bottom: -14px; right: 10px; }
+.mind-connect-handle.to-parent { top: 0; left: 24px; transform: translate(-50%, -50%); }
+.mind-connect-handle.as-parent { bottom: 0; right: 24px; transform: translate(50%, 50%); }
 .mind-detach-handle {
   position: absolute; width: 28px; height: 28px; display: none;
   z-index: 10001; cursor: pointer; border-radius: 999px;
@@ -221,14 +222,18 @@ body { background-color: #f8f9fb; }
 }
 .mind-detach-handle::after {
   content: "";
-  position: absolute; left: 4px; top: 4px;
-  width: 20px; height: 20px; border-radius: 999px;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--ui-inv-scale, 1));
+  width: 14px; height: 14px; border-radius: 999px;
   background: #fff; box-shadow: 0 1px 4px rgba(15,23,42,0.18);
+  transform-origin: center;
 }
 .mind-detach-handle::before {
-  content: "×";
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font-size: 15px; line-height: 1; font-weight: 700; color: #94a3b8; z-index: 1;
+  content: "";
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--ui-inv-scale, 1)) rotate(45deg);
+  width: 7px; height: 7px; z-index: 1; transform-origin: center;
+  background:
+    linear-gradient(#94a3b8, #94a3b8) center/1.5px 100% no-repeat,
+    linear-gradient(#94a3b8, #94a3b8) center/100% 1.5px no-repeat;
 }
 .mind-object.selected[data-parent-id][data-branch-side="left"] > .mind-detach-handle {
   left: auto; right: 0; transform: translate(50%, -50%);
@@ -244,7 +249,7 @@ body { background-color: #f8f9fb; }
 .image-object img { display: block; }
 
 .text-format-toolbar {
-  position: absolute; top: -42px; left: 0;
+  position: fixed; top: 0; left: 0;
   background: rgba(255,255,255,0.86); padding: 5px 6px;
   border-radius: 12px; box-shadow: 0 4px 16px rgba(15,23,42,0.12);
   display: flex; gap: 2px; z-index: 10000;
@@ -1167,7 +1172,8 @@ function startEditingMind(el) {
   el.classList.add('mind-edit-mode');
   label.contentEditable = 'true';
   const toolbar = createFormatToolbar(label);
-  el.appendChild(toolbar);
+  document.body.appendChild(toolbar);
+  updateFormatToolbarPosition(toolbar, el);
   try { label.focus({ preventScroll: true }); } catch (_) { label.focus(); }
   const r = document.createRange();
   r.selectNodeContents(label);
@@ -1177,7 +1183,11 @@ function startEditingMind(el) {
   sel.addRange(r);
   requestAnimationFrame(function() {
     updateMindBtn();
-    requestAnimationFrame(updateMindBtn);
+    updateFormatToolbarPosition(toolbar, el);
+    requestAnimationFrame(function() {
+      updateMindBtn();
+      updateFormatToolbarPosition(toolbar, el);
+    });
   });
 
   let finished = false;
@@ -1185,6 +1195,7 @@ function startEditingMind(el) {
     requestAnimationFrame(function() {
       renderConnectors();
       updateMindBtn();
+      updateFormatToolbarPosition(toolbar, el);
     });
   };
   const finish = function(removeIfEmpty) {
@@ -1781,7 +1792,9 @@ function updateSelectionToolbar() {
 }
 
 function updateCanvasTransform() {
-  $('canvas-wrapper').style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+  const wrapper = $('canvas-wrapper');
+  wrapper.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+  wrapper.style.setProperty('--ui-inv-scale', 1 / scale);
   const c = $('canvas-container');
   const gridSize = 20 * scale;
 
@@ -2378,7 +2391,8 @@ function startEditingText(textElement) {
   tc.focus();
 
   const toolbar = createFormatToolbar(tc);
-  textElement.appendChild(toolbar);
+  document.body.appendChild(toolbar);
+  updateFormatToolbarPosition(toolbar, textElement);
 
   placeCaretAtEnd(tc);
 
@@ -2394,6 +2408,7 @@ function startEditingText(textElement) {
     updateSelectionToolbar();
     tc.removeEventListener('blur', onBlur);
     tc.removeEventListener('keydown', onKeydown);
+    tc.removeEventListener('input', onInput);
     tc.removeEventListener('paste', onPaste);
     document.removeEventListener('mousedown', onOutsidePointer, true);
     document.removeEventListener('touchstart', onOutsidePointer);
@@ -2413,6 +2428,11 @@ function startEditingText(textElement) {
       finish();
     }
   };
+  const onInput = function() {
+    requestAnimationFrame(function() {
+      updateFormatToolbarPosition(toolbar, textElement);
+    });
+  };
   const onPaste = function(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -2421,6 +2441,7 @@ function startEditingText(textElement) {
   };
   tc.addEventListener('blur', onBlur);
   tc.addEventListener('keydown', onKeydown);
+  tc.addEventListener('input', onInput);
   tc.addEventListener('paste', onPaste);
   document.addEventListener('mousedown', onOutsidePointer, true);
   document.addEventListener('touchstart', onOutsidePointer, { passive: true });
@@ -2529,6 +2550,20 @@ function applyEditFormat(editable, command, value) {
     document.execCommand(command, false, null);
   }
   editable.focus();
+}
+
+function updateFormatToolbarPosition(toolbar, hostEl) {
+  if (!toolbar || !hostEl || !toolbar.parentNode) return;
+  const r = hostEl.getBoundingClientRect();
+  const margin = 8;
+  const width = toolbar.offsetWidth || 0;
+  const height = toolbar.offsetHeight || 0;
+  let left = r.left + r.width / 2 - width / 2;
+  left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+  let top = r.top - height - 8;
+  if (top < margin) top = r.bottom + 8;
+  toolbar.style.left = Math.round(left) + 'px';
+  toolbar.style.top = Math.round(top) + 'px';
 }
 
 function createFormatToolbar(editable) {
@@ -2663,7 +2698,7 @@ function saveCanvas() {
     'groupObjects','ungroupObjects',
     'mindNodePlainText','mindSubtreeToOutline','selectionToMindOutline','makeOnefileClipboardHTML','onefilePayloadFromHTML','parseOutlineText','createMindmapFromOutline','detachMindSubtree','detachSelectedMindSubtrees','connectMindAsChild','setMindParentAsChild','connectMindSelectionAsChildren','beginMindConnectDrag','updateMindConnectLine','hideMindConnectLine','finishMindConnectDrag','updateDraggedMindBranchSides',
     'copySelection','cutSelection','reIdRecursive','collectMindIdMap','remapClipboardItem','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor',
-    'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML','selectEditableContents','placeCaretAtEnd','selectionWithin','normalizeFontSize','applyEditFormat','createFormatToolbar',
+    'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML','selectEditableContents','placeCaretAtEnd','selectionWithin','normalizeFontSize','applyEditFormat','updateFormatToolbarPosition','createFormatToolbar',
     'setViewOnly','isViewOnly','setTouchSelectMode',
     'applyDragMove','applyResizeMove','getTextSideResizeDirection','setupFilenameBar','setupTouchSupport',
     'setupPlatformTooltips','buildShortcutsPanel',
