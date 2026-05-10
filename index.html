@@ -1532,10 +1532,10 @@ function getMindRoot(node) {
 
 function getMindBranchSide(nodeEl) {
   if (!nodeEl || !nodeEl.dataset.parentId) return 'right';
-  if (nodeEl.dataset.branchSide) return nodeEl.dataset.branchSide;
   const parent = document.getElementById(nodeEl.dataset.parentId);
   if (!parent) return 'right';
   if (parent.dataset.parentId) return getMindBranchSide(parent);
+  if (nodeEl.dataset.branchSide) return nodeEl.dataset.branchSide;
   const nodeCenter = (parseFloat(nodeEl.style.left) || 0) + nodeEl.offsetWidth / 2;
   const parentCenter = (parseFloat(parent.style.left) || 0) + parent.offsetWidth / 2;
   return nodeCenter < parentCenter ? 'left' : 'right';
