@@ -197,22 +197,29 @@ body { background-color: #f8f9fb; }
   display: block;
 }
 .mind-label { outline: none; min-width: 20px; display: block; text-align: left; }
+.mind-object.mind-root-with-children .mind-label,
+.mind-object.mind-root-with-children .mind-label * {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+}
 .mind-edit-mode { box-shadow: 0 0 0 2px #1877F2, 0 1px 4px rgba(0,0,0,0.13) !important; cursor: text; }
 .mind-connect-handle {
-  position: absolute; width: 28px; height: 28px; border-radius: 999px;
+  position: absolute; width: 32px; height: 32px; border-radius: 999px;
   background: transparent;
   display: none; z-index: 10001; cursor: crosshair;
 }
 .mind-connect-handle::after {
   content: "";
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(var(--ui-inv-scale, 1));
-  width: 10px; height: 10px; border-radius: 999px;
-  background: #94a3b8; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(15,23,42,0.18);
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(45deg) scale(var(--ui-inv-scale, 1));
+  width: 9px; height: 9px;
+  border-right: 3px solid #94a3b8;
+  border-bottom: 3px solid #94a3b8;
+  filter: drop-shadow(0 1px 1px rgba(255,255,255,0.95)) drop-shadow(0 1px 2px rgba(15,23,42,0.16));
   transform-origin: center;
 }
+.mind-object:hover > .mind-connect-handle,
 .mind-object.selected > .mind-connect-handle { display: block; }
 .mind-edit-mode > .mind-connect-handle { display: none !important; }
-.mind-connect-handle.to-parent { top: 0; left: 24px; transform: translate(-50%, -50%); }
 .mind-connect-handle.as-parent { bottom: 0; right: 24px; transform: translate(50%, 50%); }
 .mind-detach-handle {
   position: absolute; width: 28px; height: 28px; display: none;
@@ -440,7 +447,8 @@ body.touch-select-active #mobile-select-btn { display: none !important; }
   user-select: none; -webkit-user-select: none;
 }
 .top-bar-logo {
-  justify-self: start; display: flex; align-items: center; margin-right: 8px;
+  justify-self: start; display: flex; align-items: center; margin: 0 8px 0 -10px;
+  min-width: 132px; height: 48px; padding: 0 10px;
   cursor: default;
 }
 .top-bar-wordmark {
@@ -556,7 +564,6 @@ body.touch-select-active #mobile-select-btn { display: none !important; }
 }
 #mind-action-bar button:hover { background: rgba(241,245,249,0.9); color: #334155; }
 .mind-bar-divider { width: 1px; height: 20px; background: rgba(15,23,42,0.1); margin: 0 4px; flex-shrink: 0; }
-#mind-cleanup-btn { color: #64748b; font-weight: 500; }
 
 #selection-toolbar {
   position: fixed; z-index: 10000;
@@ -655,8 +662,6 @@ body.touch-select-active #mobile-select-btn { display: none !important; }
   <button id="mind-child-btn" class="tooltip" data-tooltip="Tab" aria-label="Add child node">+ Child</button>
   <div id="mind-child-divider" class="mind-bar-divider"></div>
   <button id="mind-sibling-btn" class="tooltip" data-tooltip="Enter" aria-label="Add sibling node">+ Sibling</button>
-  <div id="mind-cleanup-divider" class="mind-bar-divider"></div>
-  <button id="mind-cleanup-btn" class="tooltip" data-tooltip="Clean up layout" aria-label="Clean up mindmap layout">Clean up</button>
 </div>
 <div id="selection-toolbar" style="display:none">
   <button id="sel-edit-btn" class="tooltip" data-tooltip="Edit" aria-label="Edit selected object">
@@ -767,6 +772,7 @@ let pendingSnapshot = null;
 let dirty = false;
 let currentFilename = 'Untitled OneFile';
 let connectors = [];
+let recoveryAutosaveTimer = null;
 
 function $(id) { return document.getElementById(id); }
 function generateId() { return 'obj_' + Math.random().toString(36).slice(2, 11); }
@@ -1123,12 +1129,11 @@ function createMindmapElement(text, id, parentId) {
   label.className = 'mind-label';
   label.innerHTML = text || '';
   wrap.appendChild(label);
-  ['to-parent', 'as-parent'].forEach(function(mode) {
-    const h = document.createElement('div');
-    h.className = 'mind-connect-handle ' + mode;
-    h.dataset.connectMode = mode;
-    wrap.appendChild(h);
-  });
+  const connectHandle = document.createElement('div');
+  connectHandle.className = 'mind-connect-handle as-parent';
+  connectHandle.dataset.connectMode = 'as-parent';
+  connectHandle.setAttribute('aria-label', 'Connect as parent');
+  wrap.appendChild(connectHandle);
   const detachHandle = document.createElement('div');
   detachHandle.className = 'mind-detach-handle';
   detachHandle.setAttribute('aria-label', 'Detach subtree');
@@ -1170,9 +1175,12 @@ function startEditingMind(el) {
   updateSelectionToolbar();
   el.classList.add('mind-edit-mode');
   label.contentEditable = 'true';
-  const toolbar = createFormatToolbar(label);
-  document.body.appendChild(toolbar);
-  updateFormatToolbarPosition(toolbar, el);
+  const canFormat = !isMindRootWithChildren(el);
+  const toolbar = canFormat ? createFormatToolbar(label) : null;
+  if (toolbar) {
+    document.body.appendChild(toolbar);
+    updateFormatToolbarPosition(toolbar, el);
+  }
   try { label.focus({ preventScroll: true }); } catch (_) { label.focus(); }
   const r = document.createRange();
   r.selectNodeContents(label);
@@ -1182,10 +1190,10 @@ function startEditingMind(el) {
   sel.addRange(r);
   requestAnimationFrame(function() {
     updateMindBtn();
-    updateFormatToolbarPosition(toolbar, el);
+    if (toolbar) updateFormatToolbarPosition(toolbar, el);
     requestAnimationFrame(function() {
       updateMindBtn();
-      updateFormatToolbarPosition(toolbar, el);
+      if (toolbar) updateFormatToolbarPosition(toolbar, el);
     });
   });
 
@@ -1194,7 +1202,7 @@ function startEditingMind(el) {
     requestAnimationFrame(function() {
       renderConnectors();
       updateMindBtn();
-      updateFormatToolbarPosition(toolbar, el);
+      if (toolbar) updateFormatToolbarPosition(toolbar, el);
     });
   };
   const finish = function(removeIfEmpty) {
@@ -1203,7 +1211,7 @@ function startEditingMind(el) {
     delete el._finishMindEdit;
     label.contentEditable = 'false';
     el.classList.remove('mind-edit-mode');
-    if (toolbar.parentNode) toolbar.remove();
+    if (toolbar && toolbar.parentNode) toolbar.remove();
     isEditing = false;
     label.removeEventListener('blur', onBlur);
     label.removeEventListener('keydown', onKeydown);
@@ -1217,7 +1225,11 @@ function startEditingMind(el) {
       updateSelectionToolbar();
       return;
     }
-    if (label.innerHTML !== beforeText) pushUndo(beforeSnapshot);
+    const changed = label.innerHTML !== beforeText;
+    if (changed) {
+      reflowMindTree(getMindRoot(el));
+      pushUndo(beforeSnapshot);
+    }
     requestAnimationFrame(function() {
       renderConnectors();
       updateMindBtn();
@@ -1233,6 +1245,12 @@ function startEditingMind(el) {
     setTimeout(function() { if (document.activeElement !== label) finish(true); }, 50);
   };
   const onKeydown = function(e) {
+    const mod = e.metaKey || e.ctrlKey;
+    if (canFormat === false && mod && ['b', 'i', 'u'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (e.key === 'Escape') { e.preventDefault(); label.textContent = beforeText; finish(true); return; }
     if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault();
@@ -1242,6 +1260,7 @@ function startEditingMind(el) {
       const pos = getNewChildPosition(el);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, el.id);
       if (el.dataset.parentId) setMindBranchSide(child, getMindBranchSide(el));
+      reflowMindTree(getMindRoot(child));
       renderConnectors();
       ensureCanvasObjectInView(child);
       startEditingMind(child);
@@ -1272,6 +1291,7 @@ function startEditingMind(el) {
       const pos = getNewSiblingPosition(el);
       const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
       if (pid) setMindBranchSide(sib, getMindBranchSide(el));
+      reflowMindTree(getMindRoot(sib));
       renderConnectors();
       ensureCanvasObjectInView(sib);
       startEditingMind(sib);
@@ -1454,6 +1474,7 @@ function ensureConnectorLayer() {
 function renderConnectors() {
   const svg = ensureConnectorLayer();
   if (!svg) return;
+  updateMindRootStyles();
   svg.innerHTML = '';
   const NS = 'http://www.w3.org/2000/svg';
   connectors.forEach(c => {
@@ -1548,6 +1569,33 @@ function setMindBranchSide(nodeEl, side) {
   else delete nodeEl.dataset.branchSide;
 }
 
+function isMindRootWithChildren(nodeEl) {
+  if (!nodeEl || !nodeEl.classList || !nodeEl.classList.contains('mind-object')) return false;
+  if (nodeEl.dataset.parentId) return false;
+  const wrapper = $('canvas-wrapper');
+  return !!(wrapper && wrapper.querySelector('.mind-object[data-parent-id="' + nodeEl.id + '"]'));
+}
+
+function updateMindRootStyles() {
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper) return;
+  Array.from(wrapper.querySelectorAll('.mind-object')).forEach(function(node) {
+    node.classList.toggle('mind-root-with-children', isMindRootWithChildren(node));
+  });
+}
+
+function getMindOrderedChildren(parentEl) {
+  const wrapper = $('canvas-wrapper');
+  if (!wrapper || !parentEl) return [];
+  const children = Array.from(wrapper.querySelectorAll('.mind-object[data-parent-id="' + parentEl.id + '"]'));
+  const byTop = function(a, b) {
+    return (parseFloat(a.style.top) || 0) - (parseFloat(b.style.top) || 0);
+  };
+  const left = children.filter(function(c) { return getMindBranchSide(c) === 'left'; }).sort(byTop);
+  const right = children.filter(function(c) { return getMindBranchSide(c) !== 'left'; }).sort(byTop);
+  return left.concat(right);
+}
+
 function getNewChildPosition(parentEl) {
   const existing = Array.from($('canvas-wrapper').querySelectorAll('.mind-object[data-parent-id="' + parentEl.id + '"]'));
   const side = parentEl.dataset.parentId ? getMindBranchSide(parentEl) : 'right';
@@ -1618,9 +1666,9 @@ function getMindSubtreeBounds(nodeEl) {
 
 function reflowMindTree(rootEl) {
   const H_GAP = 80, V_GAP = 16;
-  const wrapper = $('canvas-wrapper');
+  updateMindRootStyles();
   function getChildren(el) {
-    return Array.from(wrapper.querySelectorAll('.mind-object[data-parent-id="' + el.id + '"]'));
+    return getMindOrderedChildren(el);
   }
   function subtreeHeight(el, side) {
     const ch = getChildren(el);
@@ -1673,6 +1721,17 @@ function reflowMindTree(rootEl) {
     });
   }
   renderConnectors();
+}
+
+function reflowMindRootsForNodes(nodes) {
+  const seen = new Set();
+  (nodes || []).forEach(function(node) {
+    if (!node || !node.classList || !node.classList.contains('mind-object')) return;
+    const root = getMindRoot(node);
+    if (!root || seen.has(root.id)) return;
+    seen.add(root.id);
+    reflowMindTree(root);
+  });
 }
 
 function updateMindBtn() {
@@ -2023,10 +2082,8 @@ function mindNodePlainText(nodeEl) {
 }
 
 function mindSubtreeToOutline(rootEl) {
-  const wrapper = $('canvas-wrapper');
   function children(el) {
-    return Array.from(wrapper.querySelectorAll('.mind-object[data-parent-id="' + el.id + '"]'))
-      .sort(function(a, b) { return (parseFloat(a.style.top) || 0) - (parseFloat(b.style.top) || 0); });
+    return getMindOrderedChildren(el);
   }
   const lines = [];
   function walk(el, depth) {
@@ -2124,9 +2181,11 @@ function createMindmapFromOutline(text, anchor) {
 
 function detachMindSubtree(nodeEl) {
   if (!nodeEl || !nodeEl.dataset.parentId) return false;
+  const oldRoot = getMindRoot(nodeEl);
   recordUndo();
   delete nodeEl.dataset.parentId;
   delete nodeEl.dataset.branchSide;
+  reflowMindRootsForNodes([oldRoot, nodeEl]);
   renderConnectors();
   updateMindBtn();
   updateSelectionToolbar();
@@ -2139,11 +2198,13 @@ function detachSelectedMindSubtrees(anchorNode) {
   });
   const targets = minds.length ? minds : (anchorNode && anchorNode.dataset.parentId ? [anchorNode] : []);
   if (!targets.length) return false;
+  const oldRoots = targets.map(getMindRoot);
   recordUndo();
   targets.forEach(function(nodeEl) {
     delete nodeEl.dataset.parentId;
     delete nodeEl.dataset.branchSide;
   });
+  reflowMindRootsForNodes(oldRoots.concat(targets));
   renderConnectors();
   updateMindBtn();
   updateSelectionToolbar();
@@ -2156,6 +2217,7 @@ function connectMindAsChild(childEl, parentEl) {
   if (getMindDescendants(childEl).includes(parentEl)) return false;
   recordUndo();
   setMindParentAsChild(childEl, parentEl);
+  reflowMindTree(getMindRoot(childEl));
   renderConnectors();
   updateMindBtn();
   updateSelectionToolbar();
@@ -2180,6 +2242,7 @@ function connectMindSelectionAsChildren(sourceEl, parentEl) {
   if (!targets.length) return false;
   recordUndo();
   targets.forEach(function(childEl) { setMindParentAsChild(childEl, parentEl); });
+  reflowMindTree(getMindRoot(parentEl));
   renderConnectors();
   updateMindBtn();
   updateSelectionToolbar();
@@ -2220,7 +2283,7 @@ function finishMindConnectDrag(clientX, clientY) {
   const targetEl = document.elementFromPoint(clientX, clientY);
   const target = targetEl ? targetEl.closest('.mind-object') : null;
   if (!source || !target || source === target) return false;
-  if (drag.mode === 'to-parent') return connectMindSelectionAsChildren(source, target);
+  if (drag.mode === 'as-parent' && selectedObjects.includes(target)) return connectMindSelectionAsChildren(target, source);
   return connectMindAsChild(target, source);
 }
 
@@ -2473,8 +2536,9 @@ function showTextDialog(callback, position) {
     dlg.style.top  = y + 'px';
     dlg.style.transform = 'none';
   } else {
+    const isMobileLayout = window.matchMedia('(hover: none) and (max-width: 700px)').matches;
     dlg.style.left = '50%';
-    dlg.style.top  = '50%';
+    dlg.style.top  = isMobileLayout ? '30%' : '50%';
     dlg.style.transform = 'translate(-50%, -50%)';
   }
   dlg._callback = callback;
@@ -2645,6 +2709,82 @@ function setTouchSelectMode(active) {
   if (isTouchSelectMode) clearSelection();
 }
 
+// ============ RECOVERY AUTOSAVE ============
+
+function getRecoveryStorageKey() {
+  return 'onefile_recovery::' + (location.origin || 'file') + location.pathname;
+}
+
+function captureRecoveryState() {
+  return {
+    version: APP_VERSION,
+    savedAt: Date.now(),
+    panX: panX,
+    panY: panY,
+    scale: scale,
+    filename: currentFilename,
+    objects: captureState().objects,
+    connectors: connectors.map(function(c) {
+      return { id: c.id, fromId: c.fromId, toId: c.toId, fromSide: c.fromSide, toSide: c.toSide };
+    })
+  };
+}
+
+function saveRecoverySnapshot(force) {
+  try {
+    if (!force && !dirty) return;
+    if (getTopLevelObjects().length === 0) {
+      localStorage.removeItem(getRecoveryStorageKey());
+      return;
+    }
+    localStorage.setItem(getRecoveryStorageKey(), JSON.stringify(captureRecoveryState()));
+  } catch (_) {}
+}
+
+function clearRecoverySnapshot() {
+  try { localStorage.removeItem(getRecoveryStorageKey()); } catch (_) {}
+}
+
+function offerRecoveryRestore() {
+  let raw = null;
+  let recovered = null;
+  try {
+    raw = localStorage.getItem(getRecoveryStorageKey());
+    if (!raw) return;
+    recovered = JSON.parse(raw);
+  } catch (_) {
+    return;
+  }
+  if (!recovered || !Array.isArray(recovered.objects) || recovered.objects.length === 0) return;
+  const when = recovered.savedAt ? new Date(recovered.savedAt).toLocaleString() : 'recently';
+  const ok = window.confirm('Restore unsaved Onefile recovery from ' + when + '?');
+  if (!ok) {
+    clearRecoverySnapshot();
+    return;
+  }
+  applyState({
+    objects: recovered.objects,
+    selection: [],
+    connectors: recovered.connectors || []
+  });
+  panX = recovered.panX || 0;
+  panY = recovered.panY || 0;
+  scale = recovered.scale || 1;
+  if (recovered.filename) currentFilename = recovered.filename;
+  const display = $('filename-display');
+  const input = $('filename-input');
+  if (display) display.textContent = currentFilename;
+  if (input) input.value = currentFilename;
+  dirty = true;
+  updateCanvasTransform();
+  updateDirtyIndicator();
+}
+
+function startRecoveryAutosave() {
+  if (recoveryAutosaveTimer) clearInterval(recoveryAutosaveTimer);
+  recoveryAutosaveTimer = setInterval(function() { saveRecoverySnapshot(false); }, 5000);
+}
+
 // ============ SAVE ============
 
 function buildStaticBodyHTML(state) {
@@ -2697,8 +2837,8 @@ function saveCanvas() {
     'createMindmapElement','addMindmapToCanvas','startEditingMind',
     'addImageToCanvas','addTextToCanvas',
     'clearSelection','selectObject','getTopLevelObjects',
-    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getMindSubtree','getMindRoot','getMindBranchSide','setMindBranchSide','getNewChildPosition','getNewSiblingPosition','getMindSubtreeBounds',
-    'reflowMindTree','updateMindBtn','updateSelectionToolbar','ensureCanvasObjectInView','initDragInitials',
+    'getCanvasRect','connectorAnchor','autoConnectorSides','ensureConnectorLayer','renderConnectors','getMindDescendants','getMindSubtree','getMindRoot','getMindBranchSide','setMindBranchSide','isMindRootWithChildren','updateMindRootStyles','getMindOrderedChildren','getNewChildPosition','getNewSiblingPosition','getMindSubtreeBounds',
+    'reflowMindTree','reflowMindRootsForNodes','updateMindBtn','updateSelectionToolbar','ensureCanvasObjectInView','initDragInitials',
     'updateCanvasTransform','centerCanvas','zoomAtPoint','zoomCentered','fitToContent',
     'startDragSelection','updateDragSelection','endDragSelection',
     'groupObjects','ungroupObjects',
@@ -2706,6 +2846,7 @@ function saveCanvas() {
     'copySelection','cutSelection','reIdRecursive','collectMindIdMap','remapClipboardItem','saveInternalClipboard','loadInternalClipboard','loadInternalClipboardFromText','pasteFromClipboard','getPasteAnchor','getDefaultCreatePoint',
     'startEditingText','showTextDialog','hideTextDialog','commitTextDialog','escapeHTML','plainTextToHTML','selectEditableContents','placeCaretAtEnd','selectionWithin','normalizeFontSize','applyEditFormat','updateFormatToolbarPosition','createFormatToolbar',
     'setViewOnly','isViewOnly','setTouchSelectMode',
+    'getRecoveryStorageKey','captureRecoveryState','saveRecoverySnapshot','clearRecoverySnapshot','offerRecoveryRestore','startRecoveryAutosave',
     'applyDragMove','applyResizeMove','getTextSideResizeDirection','setupFilenameBar','setupTouchSupport',
     'setupPlatformTooltips','buildShortcutsPanel',
     'buildStaticBodyHTML','saveCanvas','init','setupEventListeners','onResize','rebuildEmbeddedState'
@@ -2739,6 +2880,7 @@ function saveCanvas() {
     "let dirty = false;",
     "let currentFilename = " + JSON.stringify(currentFilename) + ";",
     "let connectors = [];",
+    "let recoveryAutosaveTimer = null;",
     "function $(id) { return document.getElementById(id); }"
   ].join('\n');
   const styleCss = document.querySelector('style').textContent;
@@ -2776,6 +2918,7 @@ fnSrc +
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   dirty = false;
+  clearRecoverySnapshot();
   updateDirtyIndicator();
 }
 
@@ -2849,8 +2992,7 @@ function buildShortcutsPanel() {
       ['Paste outline', 'Paste bullets'],
       ['Copy outline', k(M) + ' ' + k('C')],
       ['Detach subtree', 'Detach button'],
-      ['Reconnect', 'Drag node handles'],
-      ['Clean up tree', 'Clean up button']
+      ['Reconnect', 'Drag node handle']
     ]],
     ['Clipboard & File', [
       ['Copy / cut / paste', k(M) + ' ' + k('C') + ' / ' + k('X') + ' / ' + k('V')],
@@ -3221,6 +3363,7 @@ function setupTouchSupport() {
       } else if (isDragging) {
         const moved = selectedObjects.some(o => o._initialLeft !== undefined &&
           (parseFloat(o.style.left) !== o._initialLeft || parseFloat(o.style.top) !== o._initialTop));
+        if (moved) reflowMindRootsForNodes(selectedObjects);
         commitGesture(moved);
         selectedObjects.forEach(o => { delete o._initialLeft; delete o._initialTop; });
         isDragging = false;
@@ -3350,15 +3493,6 @@ function setupEventListeners() {
       groupObjects();
     }
   });
-  function getMindRoot(node) {
-    let root = node;
-    while (root.dataset.parentId) {
-      const par = document.getElementById(root.dataset.parentId);
-      if (!par) break;
-      root = par;
-    }
-    return root;
-  }
   function afterMindEdit(action) {
     if (!isEditing) { action(); return; }
     const activeMind = document.querySelector('.mind-edit-mode');
@@ -3367,19 +3501,10 @@ function setupEventListeners() {
       action();
       return;
     }
-    const activeLabel = document.querySelector('.mind-edit-mode .mind-label');
-    if (activeLabel) activeLabel.blur();
-    setTimeout(action, 80);
+  const activeLabel = document.querySelector('.mind-edit-mode .mind-label');
+  if (activeLabel) activeLabel.blur();
+  setTimeout(action, 80);
   }
-  $('mind-cleanup-btn').addEventListener('click', function() {
-    if (isViewOnly()) return;
-    afterMindEdit(function() {
-      const mindSel = selectedObjects.find(function(o) { return o.classList.contains('mind-object'); });
-      if (!mindSel) return;
-      recordUndo();
-      reflowMindTree(getMindRoot(mindSel));
-    });
-  });
   $('mind-child-btn').addEventListener('click', function() {
     if (isViewOnly()) return;
     afterMindEdit(function() {
@@ -3389,6 +3514,7 @@ function setupEventListeners() {
       const pos = getNewChildPosition(mindSel);
       const child = addMindmapToCanvas('', pos.left, pos.top, undefined, mindSel.id);
       if (mindSel.dataset.parentId) setMindBranchSide(child, getMindBranchSide(mindSel));
+      reflowMindTree(getMindRoot(child));
       renderConnectors();
       ensureCanvasObjectInView(child);
       startEditingMind(child);
@@ -3404,6 +3530,7 @@ function setupEventListeners() {
       const pos = getNewSiblingPosition(mindSel);
       const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
       if (pid) setMindBranchSide(sib, getMindBranchSide(mindSel));
+      reflowMindTree(getMindRoot(sib));
       renderConnectors();
       ensureCanvasObjectInView(sib);
       startEditingMind(sib);
@@ -3679,6 +3806,7 @@ function setupEventListeners() {
         o._initialLeft !== undefined &&
         (parseFloat(o.style.left) !== o._initialLeft || parseFloat(o.style.top) !== o._initialTop)
       );
+      if (moved) reflowMindRootsForNodes(selectedObjects);
       commitGesture(moved);
       selectedObjects.forEach(o => { delete o._initialLeft; delete o._initialTop; });
       isDragging = false;
@@ -3735,6 +3863,7 @@ function setupEventListeners() {
         const pos = getNewChildPosition(selectedMind);
         const child = addMindmapToCanvas('', pos.left, pos.top, undefined, selectedMind.id);
         if (selectedMind.dataset.parentId) setMindBranchSide(child, getMindBranchSide(selectedMind));
+        reflowMindTree(getMindRoot(child));
         renderConnectors();
         ensureCanvasObjectInView(child);
         startEditingMind(child);
@@ -3747,6 +3876,7 @@ function setupEventListeners() {
         const pos = getNewSiblingPosition(selectedMind);
         const sib = addMindmapToCanvas('', pos.left, pos.top, undefined, pid);
         if (pid) setMindBranchSide(sib, getMindBranchSide(selectedMind));
+        reflowMindTree(getMindRoot(sib));
         renderConnectors();
         ensureCanvasObjectInView(sib);
         startEditingMind(sib);
@@ -3972,6 +4102,7 @@ function setupEventListeners() {
   window.addEventListener('beforeunload', function(e) {
     if (!dirty) return;
     if (getTopLevelObjects().length === 0) return;
+    saveRecoverySnapshot(true);
     e.preventDefault();
     e.returnValue = '';
     return '';
@@ -4013,8 +4144,10 @@ function init() {
   setupPlatformTooltips();
   buildShortcutsPanel();
   setupFilenameBar();
+  offerRecoveryRestore();
   updateDirtyIndicator();
   setupTouchSupport();
+  startRecoveryAutosave();
   try { document.execCommand('defaultParagraphSeparator', false, 'br'); } catch (_) {}
 }
 
